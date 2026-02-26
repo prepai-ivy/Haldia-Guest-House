@@ -18,9 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
-import { fetchGuestHouses } from "@/api/guestHouseApi";
-import { fetchRoomStats } from "@/api/roomStatsApi";
-import { deleteRoom } from "@/api/roomApi";
+import { fetchGuestHouses } from "@/services/guestHouseApi";
+import { fetchRoomStats } from "@/services/roomStatsApi";
+import { deleteRoom } from "@/services/roomApi";
 
 const amenityIcons = {
   WiFi: Wifi,

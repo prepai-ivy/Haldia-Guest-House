@@ -5,8 +5,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import GuestHouseCard from "@/components/cards/GuestHouseCard";
 import { Building2, Bed, CheckCircle } from "lucide-react";
 
-import { fetchGuestHouses } from "@/api/guestHouseApi";
-import { fetchDashboardStats } from "@/api/dashboardStatsApi";
+import { fetchGuestHouses } from "@/services/guestHouseApi";
+import { fetchDashboardStats } from "@/services/dashboardStatsApi";
 
 export default function RoomAvailability() {
   const [guestHouses, setGuestHouses] = useState([]);

@@ -16,12 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, CalendarDays, User, Building2, Check, Loader2 } from "lucide-react";
-import { fetchAvailability } from "@/api/availabilityApi";
+import { fetchAvailability } from "@/services/availabilityApi";
 import { formatDateIST } from "@/utils/date";
 
-import { fetchGuestHouses } from "@/api/guestHouseApi";
-import { fetchRoomsByGuestHouse } from "@/api/roomApi";
-import { createBooking } from "@/api/bookingApi";
+import { fetchGuestHouses } from "@/services/guestHouseApi";
+import { fetchRoomsByGuestHouse } from "@/services/roomApi";
+import { createBooking } from "@/services/bookingApi";
 
 import { useAuth } from "@/context/AuthContext";
 import Notification from "@/components/ui/Notification";

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Loader2 } from "lucide-react";
-import { signup } from "@/api/authApi";
+import { signup } from "@/services/authApi";
 import Notification from "@/components/ui/Notification";
 
 export default function Signup() {

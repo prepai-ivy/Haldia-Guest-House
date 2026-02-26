@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-import { createUser } from "@/api/userApi";
+import { createUser } from "@/services/userApi";
 
 export default function AddUser() {
   const router = useRouter();

@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Filter, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { fetchBookings, updateBookingStatus } from "@/api/bookingApi";
-import { fetchRooms } from "@/api/roomApi";
-import { fetchGuestHouses } from "@/api/guestHouseApi";
+import { fetchBookings, updateBookingStatus } from "@/services/bookingApi";
+import { fetchRooms } from "@/services/roomApi";
+import { fetchGuestHouses } from "@/services/guestHouseApi";
 
 const statusTabs = [
   { key: "all", label: "All Bookings" },

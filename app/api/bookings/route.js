@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api-utils";
 import Booking from "@/lib/models/Booking.model";
 import Room from "@/lib/models/Room.model";
 import User from "@/lib/models/User.model";
+import "@/lib/models/GuestHouse.model"; // register schema for populate
 import mongoose from "mongoose";
 import { ObjectId } from "mongodb";
 import { getAuthUser } from "@/lib/auth";

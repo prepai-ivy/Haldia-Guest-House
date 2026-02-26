@@ -4,7 +4,8 @@
       "Bash(npm install)",
       "Bash(npx next build)",
       "Bash(echo \"=== guest-houses/route.js $or fix ===\")",
-      "Bash(echo \"=== guest-house-stats/route.js $or fix ===\")"
+      "Bash(echo \"=== guest-house-stats/route.js $or fix ===\")",
+      "Bash(xargs sed -i 's|from \"\"@/api/|from \"\"@/services/|g')"
     ]
   }
 }

@@ -15,10 +15,10 @@ import GuestHouseCard from "@/components/cards/GuestHouseCard";
 import BookingCard from "@/components/cards/BookingCard";
 import { useAuth } from "@/context/AuthContext";
 
-import { fetchGuestHouseStats } from "@/api/guestHouseStatsApi";
-import { fetchDashboardStats } from "@/api/dashboardStatsApi";
-import { fetchBookings } from "@/api/dashboardApi";
-import { updateBookingStatus } from "@/api/bookingApi";
+import { fetchGuestHouseStats } from "@/services/guestHouseStatsApi";
+import { fetchDashboardStats } from "@/services/dashboardStatsApi";
+import { fetchBookings } from "@/services/dashboardApi";
+import { updateBookingStatus } from "@/services/bookingApi";
 
 export default function Dashboard() {
   const { user, isAdmin, isCustomer } = useAuth();

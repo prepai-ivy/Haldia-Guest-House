@@ -7,7 +7,7 @@ import { Shield, UserCheck, UserMinus } from "lucide-react";
 import {
   fetchCheckInOutBookings,
   updateBookingStatus,
-} from "@/api/bookingApi";
+} from "@/services/bookingApi";
 
 export default function CheckInOut() {
   const [bookings, setBookings] = useState([]);

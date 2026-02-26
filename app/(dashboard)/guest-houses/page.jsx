@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Building2, MapPin, Layers, Edit, Trash2 } from "lucide-react";
 
-import { fetchGuestHouseStats } from "@/api/guestHouseStatsApi";
+import { fetchGuestHouseStats } from "@/services/guestHouseStatsApi";
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { deleteGuestHouse } from "@/api/guestHouseApi";
+import { deleteGuestHouse } from "@/services/guestHouseApi";
 
 export default function GuestHouses() {
   const { isSuperAdmin } = useAuth();

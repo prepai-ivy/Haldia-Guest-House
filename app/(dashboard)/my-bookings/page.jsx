@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { CalendarCheck, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { fetchBookings } from "@/api/bookingApi";
+import { fetchBookings } from "@/services/bookingApi";
 
 export default function MyBookings() {
   const { user } = useAuth();

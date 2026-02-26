@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { fetchUsers, updateUser } from "@/api/userApi";
+import { fetchUsers, updateUser } from "@/services/userApi";
 import { useRouter } from "next/navigation";
 
 const roleConfig = {

@@ -14,9 +14,9 @@ import {
   ArrowLeft,
   Loader2,
 } from "lucide-react";
-import { createGuestHouse } from "@/api/guestHouseApi";
-import { createRoom, fetchRoomsByGuestHouse } from "@/api/roomApi";
-import { fetchGuestHouseById, updateGuestHouse } from "@/api/guestHouseApi";
+import { createGuestHouse } from "@/services/guestHouseApi";
+import { createRoom, fetchRoomsByGuestHouse } from "@/services/roomApi";
+import { fetchGuestHouseById, updateGuestHouse } from "@/services/guestHouseApi";
 import Notification from "@/components/ui/Notification";
 
 function hasDuplicateRoomNumbers(rooms) {

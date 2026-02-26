@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-import { fetchUserById, updateUser } from "@/api/userApi";
+import { fetchUserById, updateUser } from "@/services/userApi";
 
 export default function EditUser() {
   const params = useParams();

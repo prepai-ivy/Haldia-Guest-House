@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-import { fetchGuestHouses } from "@/api/guestHouseApi";
-import { createRoom, updateRoom, fetchRoomById } from "@/api/roomApi";
+import { fetchGuestHouses } from "@/services/guestHouseApi";
+import { createRoom, updateRoom, fetchRoomById } from "@/services/roomApi";
 import Notification from "@/components/ui/Notification";
 
 export default function AddRoomForm() {

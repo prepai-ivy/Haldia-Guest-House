@@ -3,6 +3,9 @@ import Booking from "@/lib/models/Booking.model";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import mongoose from "mongoose";
 import { getAuthUser } from "@/lib/auth";
+import "@/lib/models/GuestHouse.model"; // register schema for populate
+import "@/lib/models/Room.model";        // register schema for populate
+import "@/lib/models/User.model";        // register schema for populate
 
 export async function PATCH(request, { params }) {
   try {
