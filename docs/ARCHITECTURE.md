@@ -56,7 +56,6 @@ Browser → Next.js (frontend pages)
 │       │   └── reset-password/route.js
 │       ├── bookings/route.js
 │       ├── bookings/[id]/route.js
-│       ├── bookings/[id]/approve/route.js
 │       ├── guest-houses/route.js
 │       ├── guest-houses/[id]/route.js
 │       ├── rooms/route.js
@@ -89,7 +88,7 @@ Browser → Next.js (frontend pages)
 │       ├── guestHouse.schema.js
 │       └── room.schema.js
 │
-├── api/                         # Frontend API client functions
+├── services/                    # Frontend API client functions
 │   ├── authApi.js
 │   ├── bookingApi.js
 │   ├── guestHouseApi.js

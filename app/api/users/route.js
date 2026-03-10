@@ -1,9 +1,14 @@
 import { connectToDatabase } from '@/lib/mongodb';
 import { successResponse, errorResponse } from '@/lib/api-utils';
+import { getAuthUser } from '@/lib/auth';
 import User from '@/lib/models/User.model';
 
 export async function GET(request) {
   try {
+    const authUser = getAuthUser(request);
+    if (!authUser) return errorResponse('Unauthorized', 401);
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(authUser.role)) return errorResponse('Forbidden', 403);
+
     await connectToDatabase();
 
     const { searchParams } = new URL(request.url);
@@ -26,6 +31,10 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const authUser = getAuthUser(request);
+    if (!authUser) return errorResponse('Unauthorized', 401);
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(authUser.role)) return errorResponse('Forbidden', 403);
+
     await connectToDatabase();
 
     const body = await request.json();
@@ -33,7 +42,7 @@ export async function POST(request) {
       name,
       email,
       password,
-      role = 'customer',
+      role = 'CUSTOMER',
       phone,
       department,
     } = body;

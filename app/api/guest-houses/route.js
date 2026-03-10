@@ -1,5 +1,6 @@
 import { connectToDatabase } from '@/lib/mongodb';
 import { successResponse, errorResponse } from '@/lib/api-utils';
+import { getAuthUser } from '@/lib/auth';
 import GuestHouse from '@/lib/models/GuestHouse.model';
 import Room from '@/lib/models/Room.model';
 import Booking from '@/lib/models/Booking.model';
@@ -112,6 +113,10 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const user = getAuthUser(request);
+    if (!user) return errorResponse('Unauthorized', 401);
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(user.role)) return errorResponse('Forbidden', 403);
+
     await connectToDatabase();
 
     const body = await request.json();

@@ -41,7 +41,7 @@ export async function POST(request) {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
 
-    const mailSent = await sendMail({
+    sendMail({
       email: normalizedEmail,
       subject: "Verify Your Email - Haldia Guest House",
       html: `
@@ -50,16 +50,9 @@ export async function POST(request) {
         <h1>${otp}</h1>
         <p>This OTP is valid for 5 minutes.</p>
       `,
-    });
+    }).catch((err) => console.error("[Signup Send OTP Mail Error]", err));
 
-    if (!mailSent) {
-      return errorResponse("Failed to send OTP email", 500);
-    }
-
-    return successResponse(
-      { message: "OTP sent successfully" },
-      200
-    );
+    return successResponse({ message: "OTP sent successfully" }, 200);
   } catch (error) {
     console.error("[Signup Send OTP Error]", error);
     return errorResponse("Internal server error", 500);

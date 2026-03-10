@@ -41,7 +41,7 @@ export async function PATCH(request, { params }) {
           department: body.department,
           phone: body.phone,
           role: body.role,
-          active: body.active,
+          isActive: body.isActive,
         },
       },
       { new: true }

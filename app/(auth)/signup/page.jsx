@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2, Loader2, Eye, EyeOff } from "lucide-react";
 import { signup } from "@/services/authApi";
 import Notification from "@/components/ui/Notification";
 
@@ -16,6 +16,9 @@ export default function Signup() {
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -44,7 +47,7 @@ export default function Signup() {
 
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/auth/signup/send-otp`,
+        `/api/auth/signup/send-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -75,7 +78,7 @@ export default function Signup() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/auth/signup/verify-otp`,
+        `/api/auth/signup/verify-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -258,23 +261,45 @@ export default function Signup() {
 
             <div className="space-y-2">
               <Label>Password</Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={(e) => handleChange("password", e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => handleChange("password", e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Confirm Password</Label>
-              <Input
-                type="password"
-                value={form.confirmPassword}
-                onChange={(e) =>
-                  handleChange("confirmPassword", e.target.value)
-                }
-                required
-              />
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={form.confirmPassword}
+                  onChange={(e) =>
+                    handleChange("confirmPassword", e.target.value)
+                  }
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">

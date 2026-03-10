@@ -76,7 +76,7 @@ Reset password after OTP verification. Password is re-hashed by the User model p
 ### `GET /api/guest-houses`
 List all active guest houses. Includes today's `available` and `occupied` room counts using IST day boundaries.
 
-**Auth:** Required
+**Auth:** Public (no token required)
 
 **Response:** Array of guest houses, each with:
 ```json
@@ -221,7 +221,9 @@ List users. Optional `?role=CUSTOMER` filter. Passwords excluded. **ADMIN+ only.
 ---
 
 ### `POST /api/users`
-Create a user.
+Create a user. **ADMIN+ only.**
+
+**Body:** `{ "name", "email", "password", "role": "CUSTOMER|ADMIN|SUPER_ADMIN", "phone", "department" }`
 
 ---
 

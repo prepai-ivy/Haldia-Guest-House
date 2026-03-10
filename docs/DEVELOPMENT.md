@@ -23,18 +23,10 @@ JWT_EXPIRES_IN=7d
 
 # Email (Gmail SMTP)
 EMAIL_ID=your-gmail@gmail.com
-EMAIL_PASS=your-gmail-app-password
-
-# CORS (optional — defaults to *)
-CLIENT_URL=http://localhost:3000
+EMAIL_PASS=your-16-char-app-password
 ```
 
-### Getting a Gmail App Password
-
-1. Enable 2-Factor Authentication on your Google account
-2. Go to **Google Account → Security → App passwords**
-3. Create a new app password for "Mail"
-4. Use the generated 16-character password as `EMAIL_PASS`
+See [docs/SETUP.md](SETUP.md) for detailed instructions on how to get each value.
 
 ---
 
@@ -90,12 +82,13 @@ return notFoundResponse();             // 404
 
 ### Frontend API Calls
 
-Frontend pages fetch data through functions in `api/*.js`, which call `lib/apiClient.js`. The API client:
+Frontend pages fetch data through functions in `services/*.js`, which call `lib/apiClient.js`. The API client:
 - Automatically attaches the JWT from localStorage
+- Uses relative URLs (`/api/...`) — no hardcoded host needed
 - Throws on non-OK responses
 
 ```js
-import { fetchGuestHouses } from "@/api/guestHouseApi";
+import { fetchGuestHouses } from "@/services/guestHouseApi";
 const houses = await fetchGuestHouses();
 ```
 
@@ -124,7 +117,7 @@ This applies on both the server (API routes) and client (page-level filtering).
 2. Connect to DB and verify auth at the top
 3. Use `lib/models/` for DB operations
 4. Return responses via `lib/api-utils.js` helpers
-5. Add a corresponding fetch function in `api/<resource>Api.js`
+5. Add a corresponding fetch function in `services/<resource>Api.js`
 
 Example skeleton:
 ```js
@@ -167,24 +160,10 @@ export async function GET(request) {
 | Mongoose `OverwriteModelError` in dev (hot reload) | Models use `mongoose.models.X \|\| mongoose.model("X", schema)` pattern |
 | Hydration errors | Don't nest `<p>` inside `<p>` in JSX — use `<div>` or `<span>` |
 | IST mismatch in stats | Always use the IST boundary helper above, not `setHours(0,0,0,0)` which uses browser timezone |
-| Gmail "less secure" error | Use App Password, not account password |
+| Gmail auth error | Use an App Password (16 chars), not your account password — see [SETUP.md](SETUP.md) |
 
 ---
 
 ## Deployment
 
-### Vercel (recommended)
-
-1. Push to GitHub
-2. Import project in Vercel
-3. Add all `.env.local` variables in Vercel's Environment Variables settings
-4. Deploy
-
-### Self-hosted
-
-```bash
-npm run build
-npm start
-```
-
-Set environment variables in your server environment before starting.
+See [docs/SETUP.md](SETUP.md) for full deployment instructions including Vercel, self-hosted with PM2, Nginx config, and first-time admin user setup.

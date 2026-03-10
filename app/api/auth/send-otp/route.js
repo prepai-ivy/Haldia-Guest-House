@@ -40,7 +40,7 @@ export async function POST(request) {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
 
-    await sendMail({
+    sendMail({
       email: normalizedEmail,
       subject: "Password Reset OTP - Haldia Guest House",
       html: `
@@ -49,7 +49,7 @@ export async function POST(request) {
         <h1>${otp}</h1>
         <p>This OTP is valid for 5 minutes.</p>
       `,
-    });
+    }).catch((err) => console.error("[Send OTP Mail Error]", err));
 
     return successResponse({ message: "OTP sent successfully" }, 200);
   } catch (error) {
