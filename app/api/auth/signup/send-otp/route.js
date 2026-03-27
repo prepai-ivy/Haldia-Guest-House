@@ -21,6 +21,7 @@ export async function POST(request) {
     const existingUser = await User.findOne({
       email: normalizedEmail,
     });
+    console.log(existingUser)
 
     if (existingUser) {
       return errorResponse("Email already exists", 409);

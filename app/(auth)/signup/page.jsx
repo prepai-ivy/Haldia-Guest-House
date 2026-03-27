@@ -47,27 +47,36 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      await fetch(
-        `/api/auth/signup/send-otp`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email }),
-        }
-      );
+      const res = await fetch(`/api/auth/signup/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setNotification({
+          type: "error",
+          title: res.status === 409 ? "Email Already Registered" : "Failed",
+          message: res.status === 409
+            ? "This email is already registered. Please log in instead."
+            : data?.message || "Could not send OTP",
+        });
+        return;
+      }
 
       setStep(2);
-
       setNotification({
         type: "success",
         title: "OTP Sent",
-        message: "Check your email",
+        message: "Check your email for the verification code",
       });
     } catch (err) {
       setNotification({
         type: "error",
         title: "Failed",
-        message: "Could not send OTP",
+        message: "Could not send OTP. Please try again.",
       });
     } finally {
       setLoading(false);
