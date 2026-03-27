@@ -65,18 +65,18 @@ export default function BookingCard({
   return (
     <div className="bg-card rounded-xl border border-border p-5 shadow-card animate-fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-full bg-secondary flex items-center justify-center">
+      <div className="flex items-start justify-between gap-2 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-11 h-11 shrink-0 rounded-full bg-secondary flex items-center justify-center">
             <User size={20} className="text-muted-foreground" />
           </div>
-          <h4 className="font-semibold text-foreground">
+          <h4 className="font-semibold text-foreground truncate">
             {booking.userId.guestName || booking.userId.name}
           </h4>
         </div>
 
         <Badge
-          className={`
+          className={`shrink-0
             ${status.variant === "warning" && "bg-warning/15 text-warning border-warning/30"}
             ${status.variant === "success" && "bg-success/15 text-success border-success/30"}
             ${status.variant === "info" && "bg-info/15 text-info border-info/30"}
@@ -102,17 +102,17 @@ export default function BookingCard({
       </div>
 
       {/* Dates */}
-      <div className="text-sm mb-4">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Calendar size={14} />
-          <span>
-            {formatDateTime(booking.checkInDate)} →{" "}
-            {formatDateTime(booking.checkOutDate)}
-          </span>
+      <div className="text-sm mb-4 space-y-1">
+        <div className="flex items-start gap-2 text-muted-foreground">
+          <Calendar size={14} className="mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="truncate">In: {formatDateTime(booking.checkInDate)}</p>
+            <p className="truncate">Out: {formatDateTime(booking.checkOutDate)}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
-          <MapPin size={14} />
-          <span>{booking.department}</span>
+          <MapPin size={14} className="shrink-0" />
+          <span className="truncate">{booking.department}</span>
         </div>
       </div>
 

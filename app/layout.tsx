@@ -5,6 +5,9 @@ import Providers from '@/components/Providers';
 export const metadata: Metadata = {
   title: 'Haldia Guest House',
   description: 'Guest House Inventory Management System',
+  icons: {
+    icon: '/logo-32x32.png',
+  },
 };
 
 export default function RootLayout({

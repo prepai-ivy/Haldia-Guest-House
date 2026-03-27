@@ -233,7 +233,7 @@ export default function NewBooking() {
 
       {formData.checkIn && formData.checkOut && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
               <p className="text-xs text-muted-foreground font-medium">Check-in</p>
               <p className="text-sm font-semibold text-foreground">
@@ -267,7 +267,7 @@ export default function NewBooking() {
       )}
 
       {formData.checkIn && formData.checkOut && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="checkInTime">Check-in Time</Label>
             <Input
@@ -550,7 +550,7 @@ export default function NewBooking() {
                 <h2 className="text-lg font-semibold">Guest Information</h2>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Guest Name</Label>
                   <Input
@@ -570,7 +570,7 @@ export default function NewBooking() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Department</Label>
                   <Input

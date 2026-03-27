@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 import { signup } from "@/services/authApi";
 import Notification from "@/components/ui/Notification";
 
@@ -173,13 +174,9 @@ export default function Signup() {
       {/* Left branding panel */}
       <div className="hidden lg:flex lg:w-1/2 gradient-header items-center justify-center p-12">
         <div className="max-w-md text-center">
-          <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Building2 size={40} className="text-white" />
+          <div className="flex items-center justify-center mx-auto mb-6">
+            <Image src="/logo.png" alt="Lalbaba Guest House" width={200} height={200} />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4">Lalbaba</h1>
-          <p className="text-primary-foreground/80 text-lg mb-2">
-            ENGINEERING GROUP
-          </p>
           <p className="text-primary-foreground/60 mt-6">
             Guest House Inventory Management System
           </p>
@@ -193,8 +190,16 @@ export default function Signup() {
       </div>
 
       {/* Signup Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md bg-card p-8 rounded-2xl border">
+      <div className="w-full lg:w-1/2 flex flex-col bg-background overflow-y-auto">
+        <div className="lg:hidden relative">
+          <div className="gradient-header flex flex-col items-center justify-center pt-14 pb-24 px-8">
+            <Image src="/logo.png" alt="Lalbaba Guest House" width={160} height={160} />
+            <p className="text-white/70 text-sm mt-3 tracking-wide">Guest House Management System</p>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-8 bg-background rounded-t-3xl" />
+        </div>
+        <div className="w-full flex-1 flex items-center lg:items-center justify-center px-6 lg:px-8 -mt-4 lg:mt-0">
+        <div className="w-full max-w-md bg-card p-6 lg:p-8 rounded-2xl border">
           <h2 className="text-2xl font-semibold mb-2">Create account</h2>
           <p className="text-muted-foreground mb-6">Sign up as a customer</p>
 
@@ -204,6 +209,7 @@ export default function Signup() {
               <Input
                 value={form.name}
                 onChange={(e) => handleChange("name", e.target.value)}
+                placeholder="Enter your full name"
                 required
               />
             </div>
@@ -215,6 +221,7 @@ export default function Signup() {
                   type="email"
                   value={form.email}
                   onChange={(e) => handleChange("email", e.target.value)}
+                  placeholder="Enter your email"
                   required
                   disabled={emailVerified}
                 />
@@ -328,6 +335,7 @@ export default function Signup() {
               Sign in
             </button>
           </p>
+        </div>
         </div>
       </div>
       {notification && (

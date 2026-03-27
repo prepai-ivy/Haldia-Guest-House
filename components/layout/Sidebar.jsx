@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -10,7 +11,8 @@ import {
   CalendarCheck,
   ClipboardList,
   LogOut,
-  Shield
+  Shield,
+  X
 } from 'lucide-react';
 
 const navItems = {
@@ -35,18 +37,25 @@ const navItems = {
   ],
 };
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
   const items = navItems[user?.role] || navItems.CUSTOMER;
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-56 bg-sidebar flex flex-col z-50">
+    <aside className={`
+      fixed left-0 top-0 h-[100dvh] w-56 bg-sidebar flex flex-col z-50
+      transition-transform duration-300
+      ${open ? 'translate-x-0' : '-translate-x-full'}
+      lg:translate-x-0
+    `}>
       {/* Logo */}
-      <div className="p-5 border-b border-sidebar-border">
-        <h1 className="text-xl font-bold text-sidebar-foreground">Lalbaba</h1>
-        <p className="text-xs text-sidebar-primary mt-0.5">ENGINEERING GROUP</p>
+      <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
+        <Image src="/logo.png" alt="Lalbaba Guest House" width={120} height={120} />
+        <button onClick={onClose} className="lg:hidden text-sidebar-muted hover:text-sidebar-foreground">
+          <X size={20} />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -60,6 +69,7 @@ export default function Sidebar() {
               <li key={item.path}>
                 <Link
                   href={item.path}
+                  onClick={onClose}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                     isActive
                       ? 'bg-sidebar-primary text-sidebar-primary-foreground'

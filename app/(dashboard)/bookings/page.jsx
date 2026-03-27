@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import BookingCard from "@/components/cards/BookingCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, Plus } from "lucide-react";
+import { Search, Filter, Plus, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { fetchBookings, updateBookingStatus } from "@/services/bookingApi";
 import { fetchRooms } from "@/services/roomApi";
@@ -29,6 +29,7 @@ export default function Bookings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const [filterOpen, setFilterOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
   const [actionErrors, setActionErrors] = useState({});
 
@@ -106,25 +107,20 @@ export default function Bookings() {
   return (
     <DashboardLayout>
       {/* Header */}
-      <div className="flex justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold">Booking Management</h1>
-          <p className="text-muted-foreground">
-            Manage all guest house booking requests
-          </p>
+          <p className="text-muted-foreground text-sm">Manage all guest house booking requests</p>
         </div>
-        <Button onClick={() => router.push("/bookings/new")}>
+        <Button onClick={() => router.push("/bookings/new")} className="w-full sm:w-auto">
           <Plus size={18} className="mr-2" /> New Booking
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="flex gap-4 mb-6">
+      {/* Search + Filter */}
+      <div className="flex gap-3 mb-6">
         <div className="relative flex-1">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2"
-            size={18}
-          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
           <Input
             placeholder="Search bookings..."
             value={searchQuery}
@@ -132,24 +128,41 @@ export default function Bookings() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline">
-          <Filter size={18} /> Filters
-        </Button>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {statusTabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded ${
-              activeTab === tab.key ? "bg-primary text-white" : "bg-secondary"
-            }`}
+        <div className="relative">
+          <Button
+            variant="outline"
+            onClick={() => setFilterOpen((v) => !v)}
+            className="flex items-center gap-2"
           >
-            {tab.label}
-          </button>
-        ))}
+            <Filter size={16} />
+            <span className="hidden sm:inline">
+              {activeTab === "all" ? "Filter" : statusTabs.find(t => t.key === activeTab)?.label}
+            </span>
+            <span className="sm:hidden">
+              {activeTab === "all" ? "Filter" : "●"}
+            </span>
+            <ChevronDown size={14} className={`transition-transform ${filterOpen ? "rotate-180" : ""}`} />
+          </Button>
+
+          {filterOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-xl shadow-lg z-20 min-w-[180px] py-1">
+              {statusTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => { setActiveTab(tab.key); setFilterOpen(false); }}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                    activeTab === tab.key
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-secondary text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Cards */}

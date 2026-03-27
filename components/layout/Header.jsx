@@ -18,7 +18,7 @@ const pageTitles = {
   '/settings': { title: 'SYSTEM', subtitle: 'SETTINGS' },
 };
 
-export default function Header() {
+export default function Header({ onMenuClick }) {
   const pathname = usePathname();
   const router = useRouter();
   const { isAdmin } = useAuth();
@@ -26,14 +26,17 @@ export default function Header() {
   const pageInfo = pageTitles[pathname] || { title: '', subtitle: '' };
 
   return (
-    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-6">
-      <div className="flex items-center gap-4">
-        <button className="p-2 hover:bg-secondary rounded-md transition-colors">
+    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 hover:bg-secondary rounded-md transition-colors"
+        >
           <Menu size={20} className="text-muted-foreground" />
         </button>
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">{pageInfo.title}</span>
-          <span className="text-muted-foreground">›</span>
+          <span className="text-muted-foreground hidden sm:block">{pageInfo.title}</span>
+          <span className="text-muted-foreground hidden sm:block">›</span>
           <span className="text-primary font-medium">{pageInfo.subtitle}</span>
         </div>
       </div>
@@ -41,10 +44,11 @@ export default function Header() {
       {isAdmin && (
         <Button
           onClick={() => router.push('/bookings/new')}
-          className="bg-primary hover:bg-primary/90"
+          className="bg-primary hover:bg-primary/90 text-sm h-9 px-3"
         >
-          <Plus size={18} className="mr-1" />
-          Allocate Room
+          <Plus size={16} className="mr-1" />
+          <span className="hidden sm:inline">Allocate Room</span>
+          <span className="sm:hidden">Allocate</span>
         </Button>
       )}
     </header>
