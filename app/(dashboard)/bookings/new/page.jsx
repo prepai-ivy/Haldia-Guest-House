@@ -237,20 +237,22 @@ export default function NewBooking() {
             <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
               <p className="text-xs text-muted-foreground font-medium">Check-in</p>
               <p className="text-sm font-semibold text-foreground">
-                {new Date(formData.checkIn).toLocaleDateString("en-US", {
+                {new Date(formData.checkIn).toLocaleDateString("en-IN", {
                   weekday: "short",
                   month: "short",
                   day: "numeric",
+                  timeZone: "Asia/Kolkata",
                 })}
               </p>
             </div>
             <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
               <p className="text-xs text-muted-foreground font-medium">Check-out</p>
               <p className="text-sm font-semibold text-foreground">
-                {new Date(formData.checkOut).toLocaleDateString("en-US", {
+                {new Date(formData.checkOut).toLocaleDateString("en-IN", {
                   weekday: "short",
                   month: "short",
                   day: "numeric",
+                  timeZone: "Asia/Kolkata",
                 })}
               </p>
             </div>

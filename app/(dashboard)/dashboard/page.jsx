@@ -148,7 +148,7 @@ export default function Dashboard() {
           <StatsCard
             title="Today's Arrivals"
             value={todaysArrivals.length}
-            subtitle={new Date().toLocaleDateString()}
+            subtitle={new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
             icon={CalendarCheck}
           />
         )}
