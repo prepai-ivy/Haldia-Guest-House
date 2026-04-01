@@ -12,6 +12,7 @@ export async function GET(request) {
     const roomId = searchParams.get('roomId');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
+    const excludeId = searchParams.get('excludeId'); // booking ID to exclude (for edit)
 
     if (!roomId || !from || !to) {
       return errorResponse('Missing query parameters', 400);
@@ -30,15 +31,18 @@ export async function GET(request) {
 
     /* -------------------- FIND BLOCKING BOOKINGS -------------------- */
 
-    const bookings = await Booking.find({
+    const query = {
       roomId: new ObjectId(roomId),
-
       status: { $in: ['BOOKED', 'CHECKED_IN'] },
-
-      // Overlap condition
       checkInDate: { $lt: end },
       checkOutDate: { $gt: start },
-    })
+    };
+
+    if (excludeId && mongoose.Types.ObjectId.isValid(excludeId)) {
+      query._id = { $ne: new ObjectId(excludeId) };
+    }
+
+    const bookings = await Booking.find(query)
       .select('checkInDate checkOutDate')
       .lean();
 

@@ -12,6 +12,7 @@ import { generatePassword } from "@/lib/password";
 import {
   bookingOnlyEmail,
   credentialsAndBookingEmail,
+  bookingRequestEmail,
 } from "@/lib/emailTemplates";
 
 export async function GET(request) {
@@ -79,6 +80,7 @@ export async function POST(request) {
       department,
       email,
       guestName,
+      paymentMode,
     } = body;
     console.log("Booking Request Body:", body);
 
@@ -158,6 +160,7 @@ export async function POST(request) {
           purpose,
           department,
           status: authUser.role === "CUSTOMER" ? "PENDING" : "BOOKED",
+          paymentMode: paymentMode || "COMPANY_SPONSORED",
           createdBy: authUser._id,
           createdByRole: authUser.role,
         },
@@ -175,6 +178,7 @@ export async function POST(request) {
       .lean();
 
     if (isNewUser) {
+      // Admin created new user → send credentials + booking confirmed
       await sendMail({
         email: bookingUser.email,
         subject: "Guest House Booking & Login Details",
@@ -185,7 +189,18 @@ export async function POST(request) {
           booking: populatedBooking,
         }),
       });
+    } else if (authUser.role === "CUSTOMER") {
+      // Customer submitted a request → pending approval, send request received
+      await sendMail({
+        email: bookingUser.email,
+        subject: "Booking Request Received",
+        html: bookingRequestEmail({
+          name: bookingUser.name,
+          booking: populatedBooking,
+        }),
+      });
     } else {
+      // Admin booked for existing user → send booking confirmed
       await sendMail({
         email: bookingUser.email,
         subject: "Guest House Booking Confirmed",

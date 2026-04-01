@@ -11,6 +11,18 @@ export async function fetchRoomsByGuestHouse(guestHouseId) {
   return res.data || [];
 }
 
+export async function fetchAvailableRooms(guestHouseId, from, to) {
+  const params = new URLSearchParams({ guestHouseId, from, to }).toString();
+  const res = await apiClient(`/rooms?${params}`);
+  return res.data || [];
+}
+
+export async function fetchAllAvailableRooms(from, to) {
+  const params = new URLSearchParams({ from, to }).toString();
+  const res = await apiClient(`/rooms?${params}`);
+  return res.data || [];
+}
+
 export async function createRoom(payload) {
   const res = await apiClient('/rooms', {
     method: 'POST',

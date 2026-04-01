@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Filter, Plus, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { fetchBookings, updateBookingStatus } from "@/services/bookingApi";
+import { fetchBookings, updateBookingStatus, editBooking } from "@/services/bookingApi";
 import { fetchRooms } from "@/services/roomApi";
 import { fetchGuestHouses } from "@/services/guestHouseApi";
 
@@ -70,6 +70,12 @@ export default function Bookings() {
       return matchesStatus && matchesSearch;
     });
   }, [bookings, activeTab, searchQuery]);
+
+  async function handleBookingEdit(id, data) {
+    const updated = await editBooking(id, data);
+    setBookings((prev) => prev.map((b) => (b._id === id ? updated : b)));
+    return updated;
+  }
 
   async function handleBookingAction(id, action) {
     try {
@@ -175,6 +181,7 @@ export default function Bookings() {
               rooms={rooms}
               guestHouses={guestHouses}
               onAction={handleBookingAction}
+              onEdit={handleBookingEdit}
               loading={actionLoading[booking._id]}
               error={actionErrors[booking._id]}
             />

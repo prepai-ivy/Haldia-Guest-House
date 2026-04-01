@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/mongodb';
 import { successResponse, errorResponse } from '@/lib/api-utils';
 import Room from '@/lib/models/Room.model';
+import Booking from '@/lib/models/Booking.model';
 import mongoose from 'mongoose';
 import { getAuthUser } from '@/lib/auth';
 import GuestHouse from '@/lib/models/GuestHouse.model';
@@ -28,9 +29,28 @@ export async function GET(request) {
       filter.guestHouseId = new mongoose.Types.ObjectId(guestHouseId);
     }
 
-    const rooms = await Room.find(filter)
+    let rooms = await Room.find(filter)
       .sort({ floor: 1, roomNumber: 1 })
       .lean();
+
+    // Filter by date availability if from/to provided
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+    if (from && to) {
+      const start = new Date(from);
+      const end = new Date(to);
+      if (!isNaN(start) && !isNaN(end) && start < end) {
+        const occupiedQuery = {
+          status: { $in: ['BOOKED', 'CHECKED_IN'] },
+          checkInDate: { $lt: end },
+          checkOutDate: { $gt: start },
+        };
+        if (filter.guestHouseId) occupiedQuery.guestHouseId = filter.guestHouseId;
+        const occupiedRoomIds = await Booking.distinct('roomId', occupiedQuery);
+        const occupiedSet = new Set(occupiedRoomIds.map(id => id.toString()));
+        rooms = rooms.filter(r => !occupiedSet.has(r._id.toString()));
+      }
+    }
 
     return successResponse(rooms);
   } catch (error) {

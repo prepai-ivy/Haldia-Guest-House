@@ -21,6 +21,14 @@ export async function createBooking(payload) {
   });
 }
 
+export async function editBooking(id, payload) {
+  const res = await apiClient(`/bookings/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+  return res.data;
+}
+
 export async function fetchCheckInOutBookings() {
   const res = await apiClient('/bookings?status=BOOKED,CHECKED_IN');
   return res.data || [];
