@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import { createBooking } from "@/services/bookingApi";
 
 import { useAuth } from "@/context/AuthContext";
 import Notification from "@/components/ui/Notification";
+import AdminGuestHouseCard from "@/components/cards/AdminGuestHouseCard";
 
 const PAYMENT_MODES = [
   { value: "COMPANY_SPONSORED", label: "Company Sponsored" },
@@ -51,8 +52,13 @@ export default function NewBooking() {
   const [notification, setNotification] = useState(null);
 
   const { user, isCustomer } = useAuth();
+  const searchParams = useSearchParams();
+
+  const [fixedGuestHouse, setFixedGuestHouse] = useState(false);
+  const [fixedRoom, setFixedRoom] = useState(false);
 
   const [range, setRange] = useState({ from: undefined, to: undefined });
+  const [showDateSelection, setShowDateSelection] = useState(!isCustomer);
 
   const [formData, setFormData] = useState({
     guestHouseId: undefined,
@@ -81,6 +87,39 @@ export default function NewBooking() {
   }, [isCustomer, user]);
 
   useEffect(() => {
+    const ghId = searchParams.get("guestHouseId");
+    const roomId = searchParams.get("roomId");
+    const checkInParam = searchParams.get("checkIn");
+    const checkOutParam = searchParams.get("checkOut");
+    const checkInTimeParam = searchParams.get("checkInTime");
+    const checkOutTimeParam = searchParams.get("checkOutTime");
+
+    if (ghId) {
+      setFixedGuestHouse(true);
+      setFormData((prev) => ({ ...prev, guestHouseId: ghId }));
+    }
+    if (roomId) {
+      setFixedRoom(true);
+      setFormData((prev) => ({ ...prev, roomId }));
+    }
+    if (checkInParam) {
+      setFormData((prev) => ({ ...prev, checkIn: checkInParam }));
+      if (checkOutParam) {
+        setRange({ from: new Date(checkInParam), to: new Date(checkOutParam) });
+      }
+    }
+    if (checkOutParam) {
+      setFormData((prev) => ({ ...prev, checkOut: checkOutParam }));
+    }
+    if (checkInTimeParam) {
+      setFormData((prev) => ({ ...prev, checkInTime: checkInTimeParam }));
+    }
+    if (checkOutTimeParam) {
+      setFormData((prev) => ({ ...prev, checkOutTime: checkOutTimeParam }));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     fetchGuestHouses().then(setGuestHouses);
   }, []);
 
@@ -97,34 +136,48 @@ export default function NewBooking() {
     fetchAllAvailableRooms(from, to)
       .then((rooms) => {
         setAvailableRooms(rooms);
-        // Clear GH/room if no longer available
+        // Clear GH/room if no longer available (but keep fixed selections from query params)
         setFormData((prev) => {
           const ghIds = new Set(rooms.map((r) => r.guestHouseId?.toString()));
-          if (prev.guestHouseId && !ghIds.has(prev.guestHouseId)) {
+          if (prev.guestHouseId && !fixedGuestHouse && !ghIds.has(prev.guestHouseId)) {
             return { ...prev, guestHouseId: undefined, roomId: undefined };
           }
-          if (prev.roomId && !rooms.some((r) => r._id === prev.roomId)) {
+          if (prev.roomId && !fixedRoom && !rooms.some((r) => r._id === prev.roomId)) {
             return { ...prev, roomId: undefined };
           }
           return prev;
         });
       })
       .finally(() => setLoadingRooms(false));
-  }, [formData.checkIn, formData.checkOut, formData.checkInTime, formData.checkOutTime]);
+  }, [formData.checkIn, formData.checkOut, formData.checkInTime, formData.checkOutTime, fixedGuestHouse, fixedRoom]);
 
   // Guest houses that have at least one available room
   const availableGuestHouses = useMemo(() => {
+    if (fixedGuestHouse && formData.guestHouseId) {
+      return guestHouses.filter((gh) => gh._id === formData.guestHouseId);
+    }
+
     const ghIds = new Set(availableRooms.map((r) => r.guestHouseId?.toString()));
     return guestHouses.filter((gh) => ghIds.has(gh._id));
-  }, [availableRooms, guestHouses]);
+  }, [availableRooms, guestHouses, fixedGuestHouse, formData.guestHouseId]);
 
   // Rooms for the selected guest house
   const roomsForGH = useMemo(() => {
     if (!formData.guestHouseId) return [];
-    return availableRooms.filter(
+
+    const rooms = availableRooms.filter(
       (r) => r.guestHouseId?.toString() === formData.guestHouseId
     );
-  }, [availableRooms, formData.guestHouseId]);
+
+    if (fixedRoom && formData.roomId) {
+      return rooms.filter((r) => r._id === formData.roomId);
+    }
+
+    return rooms;
+  }, [availableRooms, formData.guestHouseId, formData.roomId, fixedRoom]);
+
+  const selectedGuestHouse = guestHouses.find((gh) => gh._id === formData.guestHouseId);
+  const selectedRoom = roomsForGH.find((r) => r._id === formData.roomId);
 
   const getDisabledDates = () => {
     const today = new Date();
@@ -143,13 +196,53 @@ export default function NewBooking() {
       checkOut: "",
       checkInTime: "14:00",
       checkOutTime: "11:00",
-      guestHouseId: undefined,
-      roomId: undefined,
+      guestHouseId: fixedGuestHouse ? prev.guestHouseId : undefined,
+      roomId: fixedRoom ? prev.roomId : undefined,
     }));
   };
 
   const handleChange = (field, value) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
+
+  const handleDateSelection = (selectedRange) => {
+    if (!selectedRange) return;
+    setRange(selectedRange);
+    setFormData((prev) => ({
+      ...prev,
+      checkIn: selectedRange.from ? formatDateIST(selectedRange.from) : "",
+      checkOut: selectedRange.to ? formatDateIST(selectedRange.to) : "",
+      guestHouseId: undefined,
+      roomId: undefined,
+    }));
+  };
+
+  const resetDateSelection = () => {
+    setRange({ from: undefined, to: undefined });
+    setFormData((prev) => ({
+      ...prev,
+      checkIn: "",
+      checkOut: "",
+      checkInTime: "14:00",
+      checkOutTime: "11:00",
+      guestHouseId: undefined,
+      roomId: undefined,
+    }));
+    setAvailableRooms([]);
+  };
+
+  const handleRoomSelectionFromCard = (ghId, roomId) => {
+    setFormData((prev) => ({
+      ...prev,
+      guestHouseId: ghId,
+      roomId,
+    }));
+    setShowDateSelection(false);
+    setStep(1);
+  };
+
+  const changeDatesAdmin = () => {
+    setShowDateSelection(true);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -209,8 +302,8 @@ export default function NewBooking() {
               ...prev,
               checkIn: selectedRange.from ? formatDateIST(selectedRange.from) : "",
               checkOut: selectedRange.to ? formatDateIST(selectedRange.to) : "",
-              guestHouseId: undefined,
-              roomId: undefined,
+              guestHouseId: fixedGuestHouse ? prev.guestHouseId : undefined,
+              roomId: fixedRoom ? prev.roomId : undefined,
             }));
           }}
           disabled={getDisabledDates()}
@@ -304,45 +397,58 @@ export default function NewBooking() {
       {availableGuestHouses.length > 0 && (
         <div className="space-y-2">
           <Label>Guest House</Label>
-          <Select
-            value={formData.guestHouseId}
-            onValueChange={(v) => {
-              handleChange("guestHouseId", v);
-              handleChange("roomId", undefined);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select guest house" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableGuestHouses.map((gh) => (
-                <SelectItem key={gh._id} value={gh._id}>
-                  {gh.name} – {gh.location}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          {fixedGuestHouse ? (
+            <Input value={selectedGuestHouse?.name || "Selected guest house"} disabled />
+          ) : (
+            <Select
+              value={formData.guestHouseId}
+              onValueChange={(v) => {
+                handleChange("guestHouseId", v);
+                handleChange("roomId", undefined);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select guest house" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableGuestHouses.map((gh) => (
+                  <SelectItem key={gh._id} value={gh._id}>
+                    {gh.name} – {gh.location}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       )}
 
       {formData.guestHouseId && (
         <div className="space-y-2">
           <Label>Available Room</Label>
-          <Select
-            value={formData.roomId}
-            onValueChange={(v) => handleChange("roomId", v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select room" />
-            </SelectTrigger>
-            <SelectContent>
-              {roomsForGH.map((r) => (
-                <SelectItem key={r._id} value={r._id}>
-                  Room {r.roomNumber} – {r.type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          {fixedRoom ? (
+            <Input
+              value={selectedRoom ? `Room ${selectedRoom.roomNumber} – ${selectedRoom.type}` : `Room allocation selected`}
+              disabled
+            />
+          ) : (
+            <Select
+              value={formData.roomId}
+              onValueChange={(v) => handleChange("roomId", v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select room" />
+              </SelectTrigger>
+              <SelectContent>
+                {roomsForGH.map((r) => (
+                  <SelectItem key={r._id} value={r._id}>
+                    Room {r.roomNumber} – {r.type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       )}
     </div>
@@ -495,24 +601,210 @@ export default function NewBooking() {
     );
   }
 
-  /* ---- Admin / Super Admin: 3-step form ---- */
-  return (
-    <DashboardLayout>
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => (step > 1 ? setStep(step - 1) : router.back())}
-            className="p-2 hover:bg-secondary rounded-lg"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold">New Booking</h1>
-            <p className="text-muted-foreground">Step {step} of 3</p>
-          </div>
-        </div>
+  /* ---- Admin / Super Admin ---- */
+  if (!isCustomer) {
+    /* Date Selection + Results View for Admin */
+    if (showDateSelection) {
+      const availableGuestHouses = useMemo(() => {
+        if (!formData.checkIn || !formData.checkOut) return [];
+        const ghIds = new Set(availableRooms.map((r) => r.guestHouseId?.toString()));
+        return guestHouses.filter((gh) => ghIds.has(gh._id));
+      }, [availableRooms, guestHouses, formData.checkIn, formData.checkOut]);
 
-        <form onSubmit={handleSubmit}>
+      return (
+        <DashboardLayout>
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-foreground">Allocate Room</h1>
+              <p className="text-muted-foreground">
+                {!formData.checkIn || !formData.checkOut ? "Select dates to check availability" : `Available rooms for ${new Date(formData.checkIn).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} - ${new Date(formData.checkOut).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}`}
+              </p>
+            </div>
+
+            {/* Date Selection */}
+            <div className="bg-card rounded-xl border border-border p-6 mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <CalendarDays size={18} />
+                <h2 className="font-semibold">Select Dates</h2>
+              </div>
+
+              <p className="text-sm text-muted-foreground mb-4">
+                {!range.from && "Select check-in date"}
+                {range.from && !range.to && "Select check-out date"}
+                {range.from && range.to && "Click 'Search Rooms' to find available rooms"}
+              </p>
+
+              <div className="bg-muted/30 p-4 rounded-lg border mb-4">
+                <Calendar
+                  mode="range"
+                  selected={range}
+                  onSelect={handleDateSelection}
+                  disabled={getDisabledDates()}
+                  modifiers={{ today: new Date(), checkin: range.from }}
+                  modifiersClassNames={{
+                    today: "bg-primary/30 text-black font-semibold",
+                    checkin: "bg-primary text-white font-bold",
+                  }}
+                  className="rounded-md"
+                />
+              </div>
+
+              {isDatesReady && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
+                      <p className="text-xs text-muted-foreground font-medium">Check-in</p>
+                      <p className="text-sm font-semibold">
+                        {new Date(formData.checkIn).toLocaleDateString("en-IN", {
+                          weekday: "short", month: "short", day: "numeric",
+                          timeZone: "Asia/Kolkata",
+                        })}
+                      </p>
+                    </div>
+                    <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
+                      <p className="text-xs text-muted-foreground font-medium">Check-out</p>
+                      <p className="text-sm font-semibold">
+                        {new Date(formData.checkOut).toLocaleDateString("en-IN", {
+                          weekday: "short", month: "short", day: "numeric",
+                          timeZone: "Asia/Kolkata",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="checkInTime">Check-in Time</Label>
+                      <Input
+                        id="checkInTime"
+                        type="time"
+                        value={formData.checkInTime}
+                        onChange={(e) => handleChange("checkInTime", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="checkOutTime">Check-out Time</Label>
+                      <Input
+                        id="checkOutTime"
+                        type="time"
+                        value={formData.checkOutTime}
+                        onChange={(e) => handleChange("checkOutTime", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={resetDateSelection}
+                      className="flex-1"
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setShowDateSelection(false)}
+                      className="flex-1"
+                    >
+                      Search Rooms
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </DashboardLayout>
+      );
+    }
+
+    /* Results View with Guest House Cards */
+    if (!showDateSelection && isDatesReady && !formData.roomId) {
+      const availableGuestHouses = useMemo(() => {
+        if (!formData.checkIn || !formData.checkOut) return [];
+        const ghIds = new Set(availableRooms.map((r) => r.guestHouseId?.toString()));
+        return guestHouses.filter((gh) => ghIds.has(gh._id));
+      }, [availableRooms, guestHouses, formData.checkIn, formData.checkOut]);
+
+      return (
+        <DashboardLayout>
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Available Rooms</h1>
+                <p className="text-muted-foreground">
+                  {new Date(formData.checkIn).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} - {new Date(formData.checkOut).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={changeDatesAdmin}
+                className="flex items-center gap-2"
+              >
+                <CalendarDays size={16} />
+                Change Date
+              </Button>
+            </div>
+
+            {loadingRooms && (
+              <div className="text-center py-12 text-muted-foreground">
+                <Loader2 size={32} className="animate-spin mx-auto mb-2" />
+                Checking availability…
+              </div>
+            )}
+
+            {!loadingRooms && availableGuestHouses.length === 0 && (
+              <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-lg text-sm text-destructive">
+                No guest houses have available rooms for the selected dates. Please choose different dates.
+              </div>
+            )}
+
+            {!loadingRooms && availableGuestHouses.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {availableGuestHouses.map((gh) => (
+                  <AdminGuestHouseCard
+                    key={gh._id}
+                    guestHouse={gh}
+                    checkIn={formData.checkIn}
+                    checkOut={formData.checkOut}
+                    availableRooms={availableRooms.filter((r) => r.guestHouseId?.toString() === gh._id)}
+                    onRoomSelect={handleRoomSelectionFromCard}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </DashboardLayout>
+      );
+    }
+
+    /* Admin 3-Step Form (after room selection) */
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <button
+              onClick={() => {
+                if (step > 1) {
+                  setStep(step - 1);
+                } else {
+                  setShowDateSelection(true);
+                  setFormData((prev) => ({ ...prev, guestHouseId: undefined, roomId: undefined }));
+                  setStep(1);
+                }
+              }}
+              className="p-2 hover:bg-secondary rounded-lg"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold">New Booking</h1>
+              <p className="text-muted-foreground">Step {step} of 3</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit}>
           {/* STEP 1: Dates → Guest house → Room */}
           {step === 1 && (
             <div className="bg-card border rounded-xl p-6 space-y-8">
@@ -686,4 +978,5 @@ export default function NewBooking() {
       )}
     </DashboardLayout>
   );
+  }
 }

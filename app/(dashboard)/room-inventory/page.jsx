@@ -252,18 +252,6 @@ export default function RoomInventory() {
                   <div className="flex gap-2 mt-4">
                     <Button
                       size="sm"
-                      className="flex-1"
-                      onClick={() =>
-                        router.push(
-                          `/bookings/new?guestHouseId=${selectedGH}&roomId=${room._id}`
-                        )
-                      }
-                    >
-                      Allocate
-                    </Button>
-
-                    <Button
-                      size="sm"
                       variant="outline"
                       onClick={() =>
                         router.push(`/room-inventory/edit/${room._id}`)

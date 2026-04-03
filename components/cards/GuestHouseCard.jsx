@@ -4,7 +4,7 @@ import { Building2, ArrowUpRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
-export default function GuestHouseCard({ guestHouse }) {
+export default function GuestHouseCard({ guestHouse, checkIn, checkOut, availableRooms = [] }) {
 
   const { isAdmin, isSuperAdmin, isCustomer } = useAuth();
   const router = useRouter();
@@ -16,6 +16,9 @@ export default function GuestHouseCard({ guestHouse }) {
     utilization = 0,
     totalRooms = 0,
   } = guestHouse;
+
+  const availableCount = checkIn && checkOut ? availableRooms.length : available;
+  const totalRoomsCount = checkIn && checkOut ? availableRooms.length : totalRooms;
 
   const getUtilizationColor = (util) => {
     if (util >= 90) return 'bg-destructive';
@@ -35,7 +38,7 @@ export default function GuestHouseCard({ guestHouse }) {
             Live Vacancy
           </p>
           <p className="text-2xl font-bold text-foreground">
-            {available} Rooms
+            {availableCount} Rooms
           </p>
         </div>
       </div>
@@ -45,7 +48,7 @@ export default function GuestHouseCard({ guestHouse }) {
       </h3>
 
       <div className="space-y-3">
-        {/* Utilization */}
+        {/* Utilization or Rooms */}
         {!isCustomer && <div>
           <div className="flex items-center justify-between text-sm mb-1.5">
             <span className="text-muted-foreground">UTILIZATION</span>
@@ -70,14 +73,36 @@ export default function GuestHouseCard({ guestHouse }) {
           </div>
         </div>}
 
+        {isCustomer && checkIn && checkOut && availableRooms.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">Available Rooms</h4>
+            <div className="space-y-2 max-h-52 overflow-y-auto"> 
+              {availableRooms.map((room) => (
+                <div key={room._id} className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium">Room {room.roomNumber}</p>
+                    <p className="text-xs text-muted-foreground">{room.type}</p>
+                  </div>
+                  <button
+                    onClick={() => router.push(`/bookings/new?guestHouseId=${_id}&roomId=${room._id}&checkIn=${checkIn}&checkOut=${checkOut}&checkInTime=14:00&checkOutTime=11:00`)}
+                    className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded hover:bg-primary/90"
+                  >
+                    Book
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="flex items-center justify-between pt-2">
           <div>
             <p className="text-xs text-muted-foreground uppercase">
-              Total Rooms
+              {checkIn && checkOut ? "Available Rooms" : "Total Rooms"}
             </p>
             <p className="text-sm font-medium text-primary">
-              {totalRooms} Rooms
+              {totalRoomsCount} Rooms
             </p>
           </div>
 
@@ -88,12 +113,12 @@ export default function GuestHouseCard({ guestHouse }) {
             Explore Floor <ArrowUpRight size={14} />
           </button>}
 
-          {isCustomer && <button
-            onClick={() => router.push(`/new-request?guestHouseId=${_id}`)}
+          {isCustomer && !checkIn && <button
+            onClick={() => router.push(`/bookings/new?guestHouseId=${_id}`)}
             className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
             Book Room <ArrowUpRight size={14} />
-          </button>}
+          </button> }
         </div>
       </div>
     </div>
