@@ -8,7 +8,6 @@ export default function AdminGuestHouseCard({
   onRoomSelect,
 }) {
   const available = guestHouse.totalRooms - guestHouse.bookedRooms;
-  const totalRooms = guestHouse.totalRooms;
   const availableCount = checkIn && checkOut ? availableRooms.length : available;
 
   return (

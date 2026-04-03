@@ -22,7 +22,6 @@ import {
   Building2,
   Check,
   Loader2,
-  Search,
 } from "lucide-react";
 import { formatDateIST } from "@/utils/date";
 
@@ -605,12 +604,6 @@ export default function NewBooking() {
   if (!isCustomer) {
     /* Date Selection + Results View for Admin */
     if (showDateSelection) {
-      const availableGuestHouses = useMemo(() => {
-        if (!formData.checkIn || !formData.checkOut) return [];
-        const ghIds = new Set(availableRooms.map((r) => r.guestHouseId?.toString()));
-        return guestHouses.filter((gh) => ghIds.has(gh._id));
-      }, [availableRooms, guestHouses, formData.checkIn, formData.checkOut]);
-
       return (
         <DashboardLayout>
           <div className="max-w-4xl mx-auto">
@@ -721,12 +714,6 @@ export default function NewBooking() {
 
     /* Results View with Guest House Cards */
     if (!showDateSelection && isDatesReady && !formData.roomId) {
-      const availableGuestHouses = useMemo(() => {
-        if (!formData.checkIn || !formData.checkOut) return [];
-        const ghIds = new Set(availableRooms.map((r) => r.guestHouseId?.toString()));
-        return guestHouses.filter((gh) => ghIds.has(gh._id));
-      }, [availableRooms, guestHouses, formData.checkIn, formData.checkOut]);
-
       return (
         <DashboardLayout>
           <div className="max-w-4xl mx-auto">

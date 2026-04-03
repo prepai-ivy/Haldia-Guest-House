@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import GuestHouseCard from "@/components/cards/GuestHouseCard";
-import { Building2, Bed, CheckCircle, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ import { formatDateIST } from "@/utils/date";
 
 export default function RoomAvailability() {
   const [guestHouses, setGuestHouses] = useState([]);
-  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [range, setRange] = useState({ from: undefined, to: undefined });
@@ -37,7 +36,6 @@ export default function RoomAvailability() {
         ]);
 
         setGuestHouses(gh);
-        setStats(dashboardStats);
       } catch (err) {
         console.error("Failed to load room availability", err);
       } finally {

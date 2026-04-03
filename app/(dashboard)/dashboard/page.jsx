@@ -28,9 +28,6 @@ export default function Dashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [actionErrors, setActionErrors] = useState({});
-  const [actionLoading, setActionLoading] = useState({});
-
   useEffect(() => {
     async function loadDashboard() {
       try {

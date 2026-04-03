@@ -17,7 +17,7 @@ export async function GET(request, { params }) {
     if (!user) return errorResponse('User not found', 404)
 
     return successResponse(user)
-  } catch (err) {
+  } catch (_err) {
     return errorResponse('Internal server error', 500)
   }
 }
@@ -50,7 +50,7 @@ export async function PATCH(request, { params }) {
     if (!updated) return errorResponse('User not found', 404)
 
     return successResponse(updated)
-  } catch (err) {
+  } catch (_err) {
     return errorResponse('Internal server error', 500)
   }
 }

@@ -72,7 +72,7 @@ export default function Signup() {
         title: "OTP Sent",
         message: "Check your email for the verification code",
       });
-    } catch (err) {
+    } catch (_err) {
       setNotification({
         type: "error",
         title: "Failed",
@@ -155,7 +155,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const { confirmPassword, ...payload } = form;
+      const { _confirmPassword, ...payload } = form;
       await signup(payload);
 
       setNotification({

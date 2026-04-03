@@ -1,6 +1,6 @@
 "use client";
 
-import { User, Calendar, MapPin, Loader2, Pencil, X } from "lucide-react";
+import { User, Calendar, MapPin, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { fetchAvailability } from "@/services/availabilityApi";
 
 const PAYMENT_MODE_LABELS = {

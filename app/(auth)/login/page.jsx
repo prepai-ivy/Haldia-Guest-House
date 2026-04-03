@@ -44,7 +44,7 @@ export default function Login() {
           message: result.error || "Invalid credentials",
         });
       }
-    } catch (err) {
+    } catch (_err) {
       setNotification({
         type: "error",
         title: "Server Error",
