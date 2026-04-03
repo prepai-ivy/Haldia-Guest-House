@@ -214,6 +214,7 @@ export default function BookingCard({
               ${status.variant === "secondary" && "bg-secondary text-muted-foreground"}
               ${status.variant === "destructive" && "bg-destructive/15 text-destructive border-destructive/30"}
             `}
+            noBgChange
           >
             {status.label}
           </Badge>
