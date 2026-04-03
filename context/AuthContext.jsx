@@ -1,13 +1,24 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiClient, ApiError } from '@/lib/apiClient';
+import { isTokenExpired } from '@/lib/tokenUtils';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Handle automatic logout on token expiration
+  const handleTokenExpired = () => {
+    setUser(null);
+    localStorage.removeItem('lalbaba_user');
+    localStorage.removeItem('lalbaba_token');
+    router.push('/login');
+  };
 
   // Restore session on reload
   useEffect(() => {
@@ -16,6 +27,13 @@ export function AuthProvider({ children }) {
 
     if (savedUser && token && savedUser !== 'undefined') {
       try {
+        // Check if token is expired
+        if (isTokenExpired(token)) {
+          localStorage.removeItem('lalbaba_user');
+          localStorage.removeItem('lalbaba_token');
+          setLoading(false);
+          return;
+        }
         setUser(JSON.parse(savedUser));
       } catch {
         // corrupted storage → clean it
@@ -26,6 +44,12 @@ export function AuthProvider({ children }) {
 
     setLoading(false);
   }, []);
+
+  // Listen for token expiration events
+  useEffect(() => {
+    window.addEventListener('token-expired', handleTokenExpired);
+    return () => window.removeEventListener('token-expired', handleTokenExpired);
+  }, [router]);
 
 
   const login = async (email, password) => {
@@ -59,6 +83,8 @@ export function AuthProvider({ children }) {
     setUser(null);
     localStorage.removeItem('lalbaba_user');
     localStorage.removeItem('lalbaba_token');
+    window.dispatchEvent(new CustomEvent('user-logout'));
+    router.push('/login');
   };
 
   const value = {
