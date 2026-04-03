@@ -99,6 +99,16 @@ export default function NewBookingPage() {
     }
   }, [searchParams]);
 
+  // If guestHouseId+roomId+checkIn+checkOut are already set via query, skip date selection and go to final booking form.
+  useEffect(() => {
+    if (formData.guestHouseId && formData.roomId && formData.checkIn && formData.checkOut) {
+      setShowDateSelection(false);
+      if (!isCustomer) {
+        setStep(1);
+      }
+    }
+  }, [formData.guestHouseId, formData.roomId, formData.checkIn, formData.checkOut, isCustomer]);
+
   // Fetch guest houses on mount
   useEffect(() => {
     fetchGuestHouses().then(setGuestHouses);
