@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { fetchAvailability } from "@/services/availabilityApi";
 
 const PAYMENT_MODE_LABELS = {
@@ -83,11 +83,34 @@ export default function BookingCard({
 
   const status = statusConfig[booking.status] || statusConfig.BOOKED;
 
-  // Rooms available for the booking's current guest house (for edit form)
+  // Rooms for currently selected guest house in edit mode
   const bookingGhId = booking.guestHouseId?._id?.toString() || booking.guestHouseId?.toString();
-  const ghRooms = rooms.filter(
-    (r) => r.guestHouseId?.toString() === bookingGhId
+  const selectedGuestHouseId = editData.guestHouseId || bookingGhId;
+  const availableRoomsForGuestHouse = rooms.filter(
+    (r) => r.guestHouseId?.toString() === selectedGuestHouseId
   );
+
+  const fetchBlockedSlotsForRoom = async (roomId) => {
+    if (!roomId) {
+      setBlockedSlots([]);
+      return;
+    }
+    const now = new Date();
+    const future = new Date();
+    future.setMonth(future.getMonth() + 6);
+
+    try {
+      const data = await fetchAvailability({
+        roomId,
+        from: now.toISOString(),
+        to: future.toISOString(),
+        excludeId: booking._id,
+      });
+      setBlockedSlots(data?.blockedSlots || []);
+    } catch (err) {
+      setBlockedSlots([]);
+    }
+  };
 
   async function handleAction(type) {
     if (!onAction) return;
@@ -104,57 +127,66 @@ export default function BookingCard({
 
   function startEdit() {
     const roomId = booking.roomId?._id || booking.roomId;
+    const guestHouseId = booking.guestHouseId?._id || booking.guestHouseId;
+
     setEditData({
       guestName: booking.userId?.name || "",
       department: booking.department || "",
       purpose: booking.purpose || "",
       paymentMode: booking.paymentMode || "COMPANY_SPONSORED",
+      guestHouseId: guestHouseId || "",
       roomId: roomId || "",
       checkInDate: toDateTimeLocalIST(booking.checkInDate),
       checkOutDate: toDateTimeLocalIST(booking.checkOutDate),
     });
     setEditing(true);
     setActionError(null);
-    setBlockedSlots([]);
 
-    // Fetch other bookings' blocked slots for this room (excluding current booking)
-    if (roomId) {
-      const now = new Date();
-      const future = new Date();
-      future.setMonth(future.getMonth() + 6);
-      fetchAvailability({
-        roomId,
-        from: now.toISOString(),
-        to: future.toISOString(),
-        excludeId: booking._id,
-      })
-        .then((data) => setBlockedSlots(data?.blockedSlots || []))
-        .catch(() => {});
-    }
+    fetchBlockedSlotsForRoom(roomId);
   }
 
   // Check if the edited dates conflict with any blocked slot
   const dateConflict = useMemo(() => {
     if (!editData.checkInDate || !editData.checkOutDate || blockedSlots.length === 0)
       return null;
+
     const checkIn = new Date(istLocalToISO(editData.checkInDate));
     const checkOut = new Date(istLocalToISO(editData.checkOutDate));
     if (isNaN(checkIn) || isNaN(checkOut) || checkIn >= checkOut) return null;
-    for (const slot of blockedSlots) {
-      if (checkIn < new Date(slot.to) && checkOut > new Date(slot.from)) {
-        const slotFrom = new Date(slot.from).toLocaleString("en-IN", {
-          day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-          hour12: true, timeZone: "Asia/Kolkata",
-        });
-        const slotTo = new Date(slot.to).toLocaleString("en-IN", {
-          day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-          hour12: true, timeZone: "Asia/Kolkata",
-        });
-        return `Conflicts with existing booking: ${slotFrom} – ${slotTo}`;
-      }
-    }
-    return null;
+
+    const overlapDetails = blockedSlots
+      .map((slot) => {
+        const slotFrom = new Date(slot.from);
+        const slotTo = new Date(slot.to);
+        if (checkIn < slotTo && checkOut > slotFrom) {
+          return {
+            from: slotFrom,
+            to: slotTo,
+            range: `${slotFrom.toLocaleString("en-IN", {
+              day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+              hour12: true, timeZone: "Asia/Kolkata",
+            })} – ${slotTo.toLocaleString("en-IN", {
+              day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+              hour12: true, timeZone: "Asia/Kolkata",
+            })}`,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (overlapDetails.length === 0) return null;
+
+    const uniqueRanges = [...new Set(overlapDetails.map((d) => d.range))];
+    return `Conflicts with existing booking(s): ${uniqueRanges.join("; ")}`;
   }, [editData.checkInDate, editData.checkOutDate, blockedSlots]);
+
+  // Reload blocked slots whenever the target room changes during edit
+  useEffect(() => {
+    if (editing && editData.roomId) {
+      fetchBlockedSlotsForRoom(editData.roomId);
+    }
+  }, [editing, editData.roomId]);
 
   async function handleEdit() {
     if (!onEdit) return;
@@ -243,7 +275,32 @@ export default function BookingCard({
             </div>
           </div>
 
-          {ghRooms.length > 0 && (
+          <div className="space-y-1">
+            <Label className="text-xs">Guest House</Label>
+            <Select
+              value={editData.guestHouseId || ""}
+              onValueChange={(v) => {
+                setEditData((p) => ({
+                  ...p,
+                  guestHouseId: v,
+                  roomId: "",
+                }));
+              }}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Select guest house" />
+              </SelectTrigger>
+              <SelectContent>
+                {guestHouses.map((gh) => (
+                  <SelectItem key={gh._id} value={gh._id}>
+                    {gh.name} – {gh.location}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {availableRoomsForGuestHouse.length > 0 && (
             <div className="space-y-1">
               <Label className="text-xs">Room</Label>
               <Select
@@ -254,7 +311,7 @@ export default function BookingCard({
                   <SelectValue placeholder="Select room" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ghRooms.map((r) => (
+{availableRoomsForGuestHouse.map((r) => (
                     <SelectItem key={r._id} value={r._id}>
                       Room {r.roomNumber} – {r.type}
                     </SelectItem>

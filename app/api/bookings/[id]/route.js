@@ -45,14 +45,31 @@ export async function PATCH(request, { params }) {
         if (checkIn >= checkOut) return errorResponse("Invalid date range", 400);
 
         // Overlap check (exclude current booking)
-        const overlap = await Booking.findOne({
+        const overlapBookings = await Booking.find({
           _id: { $ne: booking._id },
           roomId: new mongoose.Types.ObjectId(roomId || booking.roomId),
           status: { $in: ["BOOKED", "CHECKED_IN"] },
           checkInDate: { $lt: checkOut },
           checkOutDate: { $gt: checkIn },
-        });
-        if (overlap) return errorResponse("Room already booked for those dates", 409);
+        })
+          .select('checkInDate checkOutDate')
+          .lean();
+
+        if (overlapBookings.length > 0) {
+          const ranges = overlapBookings.map((ob) => {
+            const from = new Date(ob.checkInDate).toLocaleString('en-IN', {
+              day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
+            });
+            const to = new Date(ob.checkOutDate).toLocaleString('en-IN', {
+              day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
+            });
+            return `${from} – ${to}`;
+          });
+          const uniqueRanges = [...new Set(ranges)];
+          return errorResponse(`Room already booked for those ranges: ${uniqueRanges.join('; ')}`, 409);
+        }
 
         booking.checkInDate = checkIn;
         booking.checkOutDate = checkOut;
