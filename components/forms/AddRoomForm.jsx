@@ -37,7 +37,7 @@ export default function AddRoomForm() {
     type: "SINGLE",
     capacity: 1,
     floor: 1,
-    status: "AVAILABLE",
+    status: "ACTIVE",
   });
 
   useEffect(() => {
@@ -242,8 +242,7 @@ export default function AddRoomForm() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="AVAILABLE">Available</SelectItem>
-                  <SelectItem value="OCCUPIED">Occupied</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
                   <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
                 </SelectContent>
               </Select>

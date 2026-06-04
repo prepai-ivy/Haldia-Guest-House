@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
       return errorResponse('Unauthorized', 401);
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return errorResponse('Invalid room id', 400);
@@ -40,10 +40,13 @@ export async function PATCH(request, { params }) {
       return errorResponse('Forbidden', 403);
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
+    console.log('[Room PATCH] id:', id, '| body:', JSON.stringify(body));
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log('[Room PATCH] 400 - Invalid room id:', id);
       return errorResponse('Invalid room id', 400);
     }
 
@@ -56,6 +59,7 @@ export async function PATCH(request, { params }) {
 
     if (body.type) {
       if (!['SINGLE', 'DOUBLE'].includes(body.type)) {
+        console.log('[Room PATCH] 400 - Invalid room type:', body.type);
         return errorResponse('Invalid room type', 400);
       }
       updatePayload.type = body.type;
@@ -63,6 +67,7 @@ export async function PATCH(request, { params }) {
 
     if (body.status) {
       if (!['ACTIVE', 'MAINTENANCE'].includes(body.status)) {
+        console.log('[Room PATCH] 400 - Invalid room status:', body.status);
         return errorResponse('Invalid room status', 400);
       }
       updatePayload.status = body.status;
