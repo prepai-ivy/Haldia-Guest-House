@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,13 @@ import {
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { createUser } from "@/services/userApi";
+import { fetchGrades } from "@/services/gradeApi";
 
 export default function AddUser() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [grades, setGrades] = useState([]);
 
   const [form, setForm] = useState({
     name: "",
@@ -29,7 +31,12 @@ export default function AddUser() {
     role: "CUSTOMER",
     department: "",
     phone: "",
+    grade: "",
   });
+
+  useEffect(() => {
+    fetchGrades().then(setGrades).catch(() => setGrades([]));
+  }, []);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -41,7 +48,7 @@ export default function AddUser() {
     setError(null);
 
     try {
-      await createUser(form);
+      await createUser({ ...form, grade: form.grade || null });
       router.push("/users");
     } catch (err) {
       setError(err.message || "Failed to create user");
@@ -124,6 +131,26 @@ export default function AddUser() {
               value={form.department}
               onChange={(e) => handleChange("department", e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Grade</Label>
+            <Select
+              value={form.grade || "NONE"}
+              onValueChange={(v) => handleChange("grade", v === "NONE" ? "" : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="No grade assigned" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NONE">No grade assigned</SelectItem>
+                {grades.map((g) => (
+                  <SelectItem key={g._id} value={g.code}>
+                    {g.code} ({g.allowedOccupancies.map((t) => t === "SINGLE" ? "Single" : "Double").join(", ")})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

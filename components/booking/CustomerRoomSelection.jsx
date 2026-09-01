@@ -1,6 +1,14 @@
+import { useEffect, useState } from "react";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useAuth } from "@/context/AuthContext";
+import { fetchGrades } from "@/services/gradeApi";
+
+const OCCUPANCY_OPTIONS = [
+  { value: "SINGLE", label: "Single" },
+  { value: "DOUBLE", label: "Double" },
+];
 
 export function CustomerRoomSelection({
   availableGuestHouses,
@@ -9,8 +17,30 @@ export function CustomerRoomSelection({
   checkIn,
   checkOut,
   onChangeDates,
-  onRoomSelect
+  onRoomSelect,
+  occupancyType,
+  onOccupancyChange,
 }) {
+  const { user } = useAuth();
+  const [grades, setGrades] = useState([]);
+
+  useEffect(() => {
+    fetchGrades().then(setGrades).catch(() => setGrades([]));
+  }, []);
+
+  const userGrade = grades.find((g) => g.code === user?.grade);
+  // No grade assigned: fall back to Double-only, matching the backend default
+  const allowedOccupancies = userGrade ? userGrade.allowedOccupancies : ["DOUBLE"];
+
+  useEffect(() => {
+    if (grades.length > 0 && !allowedOccupancies.includes(occupancyType)) {
+      onOccupancyChange(allowedOccupancies[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grades.length, allowedOccupancies.join(",")]);
+
+  const roomsForOccupancy = availableRooms.filter((r) => r.type === occupancyType);
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
@@ -29,6 +59,37 @@ export function CustomerRoomSelection({
             <CalendarDays size={16} />
             Change Date
           </Button>
+        </div>
+
+        <div className="mb-6">
+          <p className="text-sm font-medium mb-2">Occupancy</p>
+          <div className="flex gap-2">
+            {OCCUPANCY_OPTIONS.map((opt) => {
+              const disabled = !allowedOccupancies.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onOccupancyChange(opt.value)}
+                  className={`px-4 py-2 rounded-lg border text-sm transition-colors ${
+                    occupancyType === opt.value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "hover:bg-secondary"
+                  } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                  title={disabled ? `Your grade (${user?.grade || "unassigned"}) is not eligible for ${opt.label.toLowerCase()} occupancy` : undefined}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          {!allowedOccupancies.includes(occupancyType) && (
+            <p className="text-xs text-destructive mt-2">
+              Your grade is not eligible for {occupancyType?.toLowerCase()} occupancy — please choose{" "}
+              {allowedOccupancies[0]?.toLowerCase()}, or contact an admin.
+            </p>
+          )}
         </div>
 
         {loadingRooms && (
@@ -62,15 +123,15 @@ export function CustomerRoomSelection({
                   <div className="flex justify-between">
                     <span>Available Rooms</span>
                     <span className="font-semibold">
-                      {availableRooms.filter((r) => r.guestHouseId?.toString() === gh._id).length}
+                      {roomsForOccupancy.filter((r) => r.guestHouseId?.toString() === gh._id).length}
                     </span>
                   </div>
                 </div>
 
                 {/* Rooms List */}
                 <div className="space-y-2 max-h-52 overflow-y-auto border rounded p-3 bg-muted/20">
-                  {availableRooms.filter((r) => r.guestHouseId?.toString() === gh._id).length > 0 ? (
-                    availableRooms
+                  {roomsForOccupancy.filter((r) => r.guestHouseId?.toString() === gh._id).length > 0 ? (
+                    roomsForOccupancy
                       .filter((r) => r.guestHouseId?.toString() === gh._id)
                       .map((room) => (
                         <button

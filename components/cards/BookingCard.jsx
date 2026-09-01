@@ -15,6 +15,12 @@ import {
 } from "@/components/ui/select";
 import { useState, useMemo, useEffect } from "react";
 import { fetchAvailability } from "@/services/availabilityApi";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+
+const OCCUPANCY_LABELS = {
+  SINGLE: "Single",
+  DOUBLE: "Double",
+};
 
 const PAYMENT_MODE_LABELS = {
   SELF_PAY: "Self Pay",
@@ -77,11 +83,18 @@ export default function BookingCard({
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [blockedSlots, setBlockedSlots] = useState([]);
+  const [confirmOverride, setConfirmOverride] = useState(false);
 
   const room = rooms.find((r) => r._id === booking.roomId?._id);
   const guestHouse = guestHouses.find((gh) => gh._id === booking.guestHouseId?._id);
 
   const status = statusConfig[booking.status] || statusConfig.BOOKED;
+
+  const effectiveOccupancy = booking.roomId?.type || room?.type;
+  const isOverridden =
+    !!booking.requestedOccupancy &&
+    !!effectiveOccupancy &&
+    effectiveOccupancy !== booking.requestedOccupancy;
 
   // Rooms for currently selected guest house in edit mode
   const bookingGhId = booking.guestHouseId?._id?.toString() || booking.guestHouseId?.toString();
@@ -123,6 +136,19 @@ export default function BookingCard({
     } finally {
       setActionLoading(false);
     }
+  }
+
+  function handleApproveClick() {
+    if (isOverridden) {
+      setConfirmOverride(true);
+      return;
+    }
+    handleAction("APPROVE");
+  }
+
+  async function confirmOverriddenApprove() {
+    await handleAction("APPROVE");
+    setConfirmOverride(false);
   }
 
   function startEdit() {
@@ -410,6 +436,20 @@ export default function BookingCard({
             </span>
           </div>
 
+          {/* Occupancy */}
+          {booking.requestedOccupancy && (
+            <div className="flex items-center gap-2 mt-2 text-xs">
+              <span className="text-muted-foreground">
+                Occupancy: {OCCUPANCY_LABELS[booking.requestedOccupancy] || booking.requestedOccupancy}
+              </span>
+              {isOverridden && (
+                <Badge className="bg-warning/15 text-warning border-warning/30" noBgChange>
+                  Overridden → {OCCUPANCY_LABELS[effectiveOccupancy] || effectiveOccupancy}
+                </Badge>
+              )}
+            </div>
+          )}
+
           {/* Dates */}
           <div className="text-sm mb-4 space-y-1 mt-3">
             <div className="flex items-start gap-2 text-muted-foreground">
@@ -443,7 +483,7 @@ export default function BookingCard({
           <Button
             size="sm"
             disabled={actionLoading}
-            onClick={() => handleAction("APPROVE")}
+            onClick={handleApproveClick}
             className="flex-1 bg-primary"
           >
             Approve
@@ -502,6 +542,17 @@ export default function BookingCard({
           ⚠ {actionError}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOverride}
+        title="Approve with overridden occupancy?"
+        description={`Requested occupancy was ${OCCUPANCY_LABELS[booking.requestedOccupancy] || booking.requestedOccupancy}, but the assigned room is ${OCCUPANCY_LABELS[effectiveOccupancy] || effectiveOccupancy}. Confirm to approve with this override.`}
+        confirmText="Approve"
+        variant="primary"
+        loading={actionLoading}
+        onConfirm={confirmOverriddenApprove}
+        onCancel={() => setConfirmOverride(false)}
+      />
     </div>
   );
 }

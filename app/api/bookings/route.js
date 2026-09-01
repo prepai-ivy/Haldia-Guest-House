@@ -1,8 +1,9 @@
-import { connectToDatabase } from "@/lib/mongodb";
+import { connectToDatabase, useTransactions } from "@/lib/mongodb";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import Booking from "@/lib/models/Booking.model";
 import Room from "@/lib/models/Room.model";
 import User from "@/lib/models/User.model";
+import Grade from "@/lib/models/Grade.model";
 import "@/lib/models/GuestHouse.model"; // register schema for populate
 import mongoose from "mongoose";
 import { ObjectId } from "mongodb";
@@ -13,6 +14,7 @@ import {
   bookingOnlyEmail,
   credentialsAndBookingEmail,
   bookingRequestEmail,
+  newBookingNotificationEmail,
 } from "@/lib/emailTemplates";
 
 export async function GET(request) {
@@ -61,11 +63,12 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const session = await mongoose.startSession();
+  let session = null;
 
   try {
     await connectToDatabase();
-    session.startTransaction();
+    session = await mongoose.startSession();
+    if (useTransactions) session.startTransaction();
 
     const authUser = getAuthUser(request);
     if (!authUser) return errorResponse("Unauthorized", 401);
@@ -81,11 +84,15 @@ export async function POST(request) {
       email,
       guestName,
       paymentMode,
+      occupancyType,
     } = body;
-    console.log("Booking Request Body:", body);
 
     if (!guestHouseId || !roomId || !checkInDate || !checkOutDate) {
       throw new Error("Missing required fields");
+    }
+
+    if (!["SINGLE", "DOUBLE"].includes(occupancyType)) {
+      throw new Error("occupancyType must be SINGLE or DOUBLE");
     }
 
     const checkIn = new Date(checkInDate);
@@ -100,6 +107,34 @@ export async function POST(request) {
     }).session(session);
 
     if (!room) throw new Error("Room not available");
+
+    if (room.type !== occupancyType) {
+      throw new Error(
+        `Selected room is ${room.type} occupancy, not ${occupancyType}`
+      );
+    }
+
+    /* -------- GRADE-BASED OCCUPANCY GATE (customer self-requests only) -------- */
+    if (authUser.role === "CUSTOMER") {
+      const currentUser = await User.findById(authUser._id).session(session);
+      const grade = currentUser?.grade
+        ? await Grade.findOne({
+            code: currentUser.grade,
+            isActive: true,
+          }).session(session)
+        : null;
+
+      // No grade assigned: fall back to Double-only (matches the default a new grade gets)
+      const allowedOccupancies = grade ? grade.allowedOccupancies : ["DOUBLE"];
+
+      if (!allowedOccupancies.includes(occupancyType)) {
+        throw new Error(
+          grade
+            ? `Your grade (${grade.code}) is not eligible for ${occupancyType.toLowerCase()} occupancy`
+            : `No grade assigned to your account — contact an admin to book ${occupancyType.toLowerCase()} occupancy`
+        );
+      }
+    }
 
     /* -------- OVERLAP CHECK -------- */
     const overlap = await Booking.findOne(
@@ -157,6 +192,7 @@ export async function POST(request) {
           userId: bookingUser._id,
           checkInDate: checkIn,
           checkOutDate: checkOut,
+          requestedOccupancy: occupancyType,
           purpose,
           department,
           status: authUser.role === "CUSTOMER" ? "PENDING" : "BOOKED",
@@ -168,7 +204,7 @@ export async function POST(request) {
       { session },
     );
 
-    await session.commitTransaction();
+    if (useTransactions) await session.commitTransaction();
     session.endSession();
 
     /* -------- SEND EMAIL -------- */
@@ -211,10 +247,26 @@ export async function POST(request) {
       });
     }
 
+    /* -------- NOTIFY OPS ADDRESS (every booking, any requestor) -------- */
+    if (process.env.BOOKING_NOTIFY_EMAIL) {
+      await sendMail({
+        email: process.env.BOOKING_NOTIFY_EMAIL,
+        subject: `New Booking Request — ${bookingUser.name}`,
+        html: newBookingNotificationEmail({
+          requesterName: bookingUser.name,
+          requesterEmail: bookingUser.email,
+          requesterRole: authUser.role,
+          booking: populatedBooking,
+        }),
+      });
+    }
+
     return successResponse(populatedBooking, 201);
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
+    if (session) {
+      if (useTransactions && session.inTransaction()) await session.abortTransaction();
+      session.endSession();
+    }
     console.error("[Bookings POST]", err);
     return errorResponse(err.message, 409);
   }

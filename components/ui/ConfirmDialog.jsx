@@ -5,10 +5,16 @@ export default function ConfirmDialog({
   confirmText = 'Delete',
   cancelText = 'Cancel',
   loading = false,
+  variant = 'destructive',
   onConfirm,
   onCancel,
 }) {
   if (!open) return null;
+
+  const confirmClass =
+    variant === 'primary'
+      ? 'bg-primary text-primary-foreground'
+      : 'bg-destructive text-white';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
@@ -32,10 +38,10 @@ export default function ConfirmDialog({
 
           <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded-lg bg-destructive text-white text-sm"
+            className={`px-4 py-2 rounded-lg text-sm ${confirmClass}`}
             disabled={loading}
           >
-            {loading ? 'Deleting…' : confirmText}
+            {loading ? 'Working…' : confirmText}
           </button>
         </div>
       </div>

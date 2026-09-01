@@ -234,6 +234,11 @@ export default function UserManagement() {
                         <Building size={11} />{user.department}
                       </p>
                     )}
+                    {user.grade && (
+                      <Badge className="bg-secondary text-muted-foreground text-xs mt-1">
+                        Grade: {user.grade}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <DropdownMenu>
@@ -264,6 +269,7 @@ export default function UserManagement() {
               <tr>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase">User</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase">Department</th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase">Grade</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase">Role</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase">Status</th>
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase">Actions</th>
@@ -288,6 +294,9 @@ export default function UserManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-muted-foreground"><Building size={14} />{user.department}</div>
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {user.grade || "—"}
                     </td>
                     <td className="px-6 py-4">
                       <Badge className={role?.color}><RoleIcon size={12} className="mr-1" />{role?.label}</Badge>

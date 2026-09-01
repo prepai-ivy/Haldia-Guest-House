@@ -45,6 +45,7 @@ export async function POST(request) {
       role = 'CUSTOMER',
       phone,
       department,
+      grade,
     } = body;
 
     if (!name || !email || !password) {
@@ -61,6 +62,7 @@ export async function POST(request) {
       role,
       phone,
       department,
+      grade,
     });
 
     const userObj = user.toObject();

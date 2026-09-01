@@ -169,6 +169,13 @@ export default function NewBookingPage() {
   const selectedGuestHouse = guestHouses.find((gh) => gh._id === formData.guestHouseId);
   const selectedRoom = roomsForGH.find((r) => r._id === formData.roomId);
 
+  // Admin flow: occupancy is derived from whichever room was picked, not chosen independently
+  useEffect(() => {
+    if (!isCustomer && selectedRoom?.type && selectedRoom.type !== formData.occupancyType) {
+      setFormData((prev) => ({ ...prev, occupancyType: selectedRoom.type }));
+    }
+  }, [isCustomer, selectedRoom, formData.occupancyType]);
+
   const getDisabledDates = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -312,6 +319,8 @@ export default function NewBookingPage() {
           checkOut={formData.checkOut}
           onChangeDates={() => setShowDateSelection(true)}
           onRoomSelect={handleRoomSelectionFromCard}
+          occupancyType={formData.occupancyType}
+          onOccupancyChange={(value) => handleChange("occupancyType", value)}
         />
       );
     }

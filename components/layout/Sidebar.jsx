@@ -12,6 +12,7 @@ import {
   ClipboardList,
   LogOut,
   Shield,
+  Settings,
   X
 } from 'lucide-react';
 
@@ -22,6 +23,7 @@ const navItems = {
     { path: '/room-inventory', label: 'Room Inventory', icon: ClipboardList },
     { path: '/bookings', label: 'All Bookings', icon: CalendarCheck },
     { path: '/users', label: 'User Management', icon: Users },
+    { path: '/settings', label: 'Settings', icon: Settings },
   ],
   ADMIN: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },

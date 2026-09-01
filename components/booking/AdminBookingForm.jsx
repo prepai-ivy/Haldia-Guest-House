@@ -22,7 +22,6 @@ const PAYMENT_MODES = [
 const OCCUPANCY_TYPES = [
   { value: "SINGLE", label: "Single" },
   { value: "DOUBLE", label: "Double" },
-  { value: "TRIPLE", label: "Triple" },
 ];
 
 export function AdminBookingForm({
@@ -144,21 +143,10 @@ export function AdminBookingForm({
                   </div>
                   <div className="space-y-2">
                     <Label>Occupancy Type</Label>
-                    <Select
-                      value={formData.occupancyType}
-                      onValueChange={(value) => onChange("occupancyType", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {OCCUPANCY_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <p className="text-sm h-10 flex items-center px-3 border rounded-md bg-muted/30 text-muted-foreground">
+                      {OCCUPANCY_TYPES.find((t) => t.value === formData.occupancyType)?.label || "—"}
+                      <span className="ml-1">(set by selected room)</span>
+                    </p>
                   </div>
                 </div>
 

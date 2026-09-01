@@ -16,6 +16,7 @@ import {
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { fetchUserById, updateUser } from "@/services/userApi";
+import { fetchGrades } from "@/services/gradeApi";
 
 export default function EditUser() {
   const params = useParams();
@@ -24,25 +25,32 @@ export default function EditUser() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [grades, setGrades] = useState([]);
 
   const [form, setForm] = useState({
     name: "",
     department: "",
     phone: "",
     role: "CUSTOMER",
+    grade: "",
     active: true,
   });
 
   useEffect(() => {
     async function load() {
-      const user = await fetchUserById(id);
+      const [user, gradeList] = await Promise.all([
+        fetchUserById(id),
+        fetchGrades().catch(() => []),
+      ]);
       setForm({
         name: user.name,
         department: user.department,
         phone: user.phone,
         role: user.role,
+        grade: user.grade || "",
         active: user.active,
       });
+      setGrades(gradeList);
       setLoading(false);
     }
     if (id) load();
@@ -51,7 +59,7 @@ export default function EditUser() {
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    await updateUser(id, form);
+    await updateUser(id, { ...form, grade: form.grade || null });
     router.push("/users");
   };
 
@@ -120,6 +128,26 @@ export default function EditUser() {
                 <SelectItem value="CUSTOMER">Customer</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Grade</Label>
+            <Select
+              value={form.grade || "NONE"}
+              onValueChange={(v) => setForm({ ...form, grade: v === "NONE" ? "" : v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="No grade assigned" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NONE">No grade assigned</SelectItem>
+                {grades.map((g) => (
+                  <SelectItem key={g._id} value={g.code}>
+                    {g.code} ({g.allowedOccupancies.map((t) => t === "SINGLE" ? "Single" : "Double").join(", ")})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
