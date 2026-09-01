@@ -33,3 +33,8 @@ export async function fetchCheckInOutBookings() {
   const res = await apiClient('/bookings?status=BOOKED,CHECKED_IN');
   return res.data || [];
 }
+
+export async function fetchBookingAttachmentUrl(id) {
+  const res = await apiClient(`/bookings/${id}/attachment`);
+  return res.data;
+}

@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { AttachmentUpload } from "@/components/booking/AttachmentUpload";
 
 const PAYMENT_MODES = [
   { value: "COMPANY_SPONSORED", label: "Company Sponsored" },
@@ -75,6 +76,24 @@ export function CustomerBookingForm({
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.paymentMode === "COMPANY_SPONSORED" && (
+                <div className="space-y-2">
+                  <Label>Supporting Document</Label>
+                  <AttachmentUpload
+                    blobPath={formData.attachmentBlobPath}
+                    fileName={formData.attachmentFileName}
+                    onUploaded={(blobPath, fileName) => {
+                      onChange("attachmentBlobPath", blobPath);
+                      onChange("attachmentFileName", fileName);
+                    }}
+                    onRemove={() => {
+                      onChange("attachmentBlobPath", null);
+                      onChange("attachmentFileName", null);
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Purpose of Visit</Label>

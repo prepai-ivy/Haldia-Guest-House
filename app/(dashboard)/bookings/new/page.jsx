@@ -51,6 +51,8 @@ export default function NewBookingPage() {
     occupancyType: "SINGLE",
     paymentMode: "COMPANY_SPONSORED",
     purpose: "",
+    attachmentBlobPath: null,
+    attachmentFileName: null,
   });
 
   // Initialize form data based on user type
@@ -245,6 +247,8 @@ export default function NewBookingPage() {
         occupancyType: formData.occupancyType,
         paymentMode: formData.paymentMode,
         purpose: formData.purpose,
+        attachmentBlobPath: formData.attachmentBlobPath,
+        attachmentFileName: formData.attachmentFileName,
       });
       setSubmitted(true);
     } catch (error) {
@@ -273,6 +277,8 @@ export default function NewBookingPage() {
       occupancyType: "SINGLE",
       paymentMode: "COMPANY_SPONSORED",
       purpose: "",
+      attachmentBlobPath: null,
+      attachmentFileName: null,
     });
   };
 

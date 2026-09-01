@@ -15,7 +15,10 @@ import {
 } from "@/components/ui/select";
 import { useState, useMemo, useEffect } from "react";
 import { fetchAvailability } from "@/services/availabilityApi";
+import { fetchBookingAttachmentUrl } from "@/services/bookingApi";
+import { useAuth } from "@/context/AuthContext";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { Paperclip } from "lucide-react";
 
 const OCCUPANCY_LABELS = {
   SINGLE: "Single",
@@ -78,12 +81,14 @@ export default function BookingCard({
   onEdit,
   showActions = true,
 }) {
+  const { isAdmin } = useAuth();
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [blockedSlots, setBlockedSlots] = useState([]);
   const [confirmOverride, setConfirmOverride] = useState(false);
+  const [attachmentLoading, setAttachmentLoading] = useState(false);
 
   const room = rooms.find((r) => r._id === booking.roomId?._id);
   const guestHouse = guestHouses.find((gh) => gh._id === booking.guestHouseId?._id);
@@ -149,6 +154,19 @@ export default function BookingCard({
   async function confirmOverriddenApprove() {
     await handleAction("APPROVE");
     setConfirmOverride(false);
+  }
+
+  async function handleViewAttachment() {
+    setAttachmentLoading(true);
+    setActionError(null);
+    try {
+      const { url } = await fetchBookingAttachmentUrl(booking._id);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setActionError(err?.message || "Could not open attachment");
+    } finally {
+      setAttachmentLoading(false);
+    }
   }
 
   function startEdit() {
@@ -465,15 +483,32 @@ export default function BookingCard({
             </div>
           </div>
 
-          <p className="text-sm text-muted-foreground mb-1">
-            <span className="font-medium">Purpose:</span> {booking.purpose}
-          </p>
-          {booking.paymentMode && (
-            <p className="text-sm text-muted-foreground mb-4">
-              <span className="font-medium">Payment:</span>{" "}
-              {PAYMENT_MODE_LABELS[booking.paymentMode] || booking.paymentMode}
+          <div className="mb-4 space-y-1">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium">Purpose:</span> {booking.purpose}
             </p>
-          )}
+            {booking.paymentMode && (
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">Payment:</span>{" "}
+                {PAYMENT_MODE_LABELS[booking.paymentMode] || booking.paymentMode}
+              </p>
+            )}
+            {isAdmin && booking.attachmentBlobPath && (
+              <button
+                type="button"
+                onClick={handleViewAttachment}
+                disabled={attachmentLoading}
+                className="flex items-center gap-1.5 text-sm text-primary hover:underline disabled:opacity-60"
+              >
+                {attachmentLoading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Paperclip size={14} />
+                )}
+                View Attachment{booking.attachmentFileName ? ` (${booking.attachmentFileName})` : ""}
+              </button>
+            )}
+          </div>
         </>
       )}
 

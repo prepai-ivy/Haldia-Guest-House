@@ -85,6 +85,8 @@ export async function POST(request) {
       guestName,
       paymentMode,
       occupancyType,
+      attachmentBlobPath,
+      attachmentFileName,
     } = body;
 
     if (!guestHouseId || !roomId || !checkInDate || !checkOutDate) {
@@ -197,6 +199,8 @@ export async function POST(request) {
           department,
           status: authUser.role === "CUSTOMER" ? "PENDING" : "BOOKED",
           paymentMode: paymentMode || "COMPANY_SPONSORED",
+          attachmentBlobPath: attachmentBlobPath || null,
+          attachmentFileName: attachmentFileName || null,
           createdBy: authUser._id,
           createdByRole: authUser.role,
         },
