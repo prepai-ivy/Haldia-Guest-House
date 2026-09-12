@@ -5,6 +5,7 @@ import Otp from "@/lib/models/Otp.model";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import sendMail from "@/lib/mail";
+import { getOtpCooldownSeconds } from "@/lib/otpCooldown";
 
 export async function POST(request) {
   try {
@@ -21,10 +22,14 @@ export async function POST(request) {
     const existingUser = await User.findOne({
       email: normalizedEmail,
     });
-    console.log(existingUser)
 
     if (existingUser) {
       return errorResponse("Email already exists", 409);
+    }
+
+    const waitSeconds = await getOtpCooldownSeconds(normalizedEmail, "SIGNUP");
+    if (waitSeconds) {
+      return errorResponse(`Please wait ${waitSeconds}s before requesting another OTP`, 429);
     }
 
     const otp = crypto.randomInt(100000, 999999).toString();

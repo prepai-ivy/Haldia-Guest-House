@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,16 @@ export function DateSelectionCard({
 }) {
   const isDatesReady = !!(range.from && range.to);
 
+  // Was `{ today: new Date(), checkin: range.from }` created fresh every render, including
+  // on every keystroke in the time inputs below — harmless (not a loop) but forced the
+  // Calendar to redo its modifier matching on unrelated state changes. "today" only needs
+  // to be computed once; the object only needs to change when range.from actually changes.
+  const today = useMemo(() => new Date(), []);
+  const calendarModifiers = useMemo(
+    () => ({ today, checkin: range.from }),
+    [today, range.from]
+  );
+
   return (
     <div className="bg-card rounded-xl border border-border p-6 mb-8">
       <div className="flex items-center gap-2 mb-4">
@@ -45,7 +56,7 @@ export function DateSelectionCard({
           selected={range}
           onSelect={onSelect}
           disabled={disabledDates}
-          modifiers={{ today: new Date(), checkin: range.from }}
+          modifiers={calendarModifiers}
           modifiersClassNames={{
             today: "bg-primary/30 text-black font-semibold",
             checkin: "bg-primary text-white font-bold",

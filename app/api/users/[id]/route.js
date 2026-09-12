@@ -53,6 +53,16 @@ export async function PATCH(request, { params }) {
       return errorResponse('Only SUPER_ADMIN can change user roles', 403)
     }
 
+    // An ADMIN cannot modify a SUPER_ADMIN's account at all (not just role) — otherwise
+    // they could still deactivate one, strip their grade/department, etc.
+    if (authUser.role !== 'SUPER_ADMIN') {
+      const target = await User.findById(id).select('role')
+      if (!target) return errorResponse('User not found', 404)
+      if (target.role === 'SUPER_ADMIN') {
+        return errorResponse('Only SUPER_ADMIN can modify a Super Admin account', 403)
+      }
+    }
+
     const updatePayload = {
       name: body.name,
       department: body.department,

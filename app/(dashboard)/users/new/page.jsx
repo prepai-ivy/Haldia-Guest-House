@@ -17,9 +17,11 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { createUser } from "@/services/userApi";
 import { fetchGrades } from "@/services/gradeApi";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AddUser() {
   const router = useRouter();
+  const { isSuperAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [grades, setGrades] = useState([]);
@@ -119,8 +121,8 @@ export default function AddUser() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="CUSTOMER">Customer</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                {isSuperAdmin && <SelectItem value="ADMIN">Admin</SelectItem>}
+                {isSuperAdmin && <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>}
               </SelectContent>
             </Select>
           </div>

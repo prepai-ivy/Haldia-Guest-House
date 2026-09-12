@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Paperclip, X, Loader2 } from "lucide-react";
-import { uploadFile } from "@/services/uploadApi";
+import { uploadFile, deleteUploadedFile } from "@/services/uploadApi";
 
 export function AttachmentUpload({ blobPath, fileName, onUploaded, onRemove, folder = "booking-attachments" }) {
   const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [error, setError] = useState(null);
 
   async function handleFileChange(e) {
@@ -25,6 +26,20 @@ export function AttachmentUpload({ blobPath, fileName, onUploaded, onRemove, fol
     }
   }
 
+  async function handleRemove() {
+    setError(null);
+    setRemoving(true);
+    try {
+      await deleteUploadedFile(blobPath);
+    } catch (err) {
+      // Don't block clearing the form field over a delete failure — just surface it.
+      console.error("[AttachmentUpload] delete failed", err);
+    } finally {
+      setRemoving(false);
+      onRemove();
+    }
+  }
+
   if (blobPath) {
     return (
       <div className="flex items-center justify-between gap-2 p-3 border rounded-lg bg-secondary/40">
@@ -34,11 +49,12 @@ export function AttachmentUpload({ blobPath, fileName, onUploaded, onRemove, fol
         </div>
         <button
           type="button"
-          onClick={onRemove}
-          className="text-muted-foreground hover:text-destructive shrink-0"
+          onClick={handleRemove}
+          disabled={removing}
+          className="text-muted-foreground hover:text-destructive shrink-0 disabled:opacity-50"
           aria-label="Remove attachment"
         >
-          <X size={16} />
+          {removing ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
         </button>
       </div>
     );

@@ -155,7 +155,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const { _confirmPassword, ...payload } = form;
+      const { confirmPassword, ...payload } = form;
       await signup(payload);
 
       setNotification({

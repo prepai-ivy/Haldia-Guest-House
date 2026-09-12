@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import User from "@/lib/models/User.model";
+import Otp from "@/lib/models/Otp.model";
 
 export async function POST(request) {
   try {
@@ -20,6 +21,19 @@ export async function POST(request) {
       return errorResponse("Email already exists", 409);
     }
 
+    const verifiedOtp = await Otp.findOne({
+      email: normalizedEmail,
+      purpose: "SIGNUP",
+      verified: true,
+    });
+
+    if (!verifiedOtp) {
+      return errorResponse(
+        "Please verify your email with the OTP sent to it before signing up",
+        400
+      );
+    }
+
     const user = await User.create({
       name,
       email: normalizedEmail,
@@ -28,6 +42,8 @@ export async function POST(request) {
       phone,
       department,
     });
+
+    await Otp.deleteMany({ email: normalizedEmail, purpose: "SIGNUP" });
 
     const userObject = user.toObject();
     delete userObject.password;

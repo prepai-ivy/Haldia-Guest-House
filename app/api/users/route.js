@@ -55,6 +55,12 @@ export async function POST(request) {
       );
     }
 
+    // Only SUPER_ADMIN can create anything other than a plain CUSTOMER account —
+    // matches the restriction PATCH /api/users/[id] already applies to role changes.
+    if (role !== 'CUSTOMER' && authUser.role !== 'SUPER_ADMIN') {
+      return errorResponse('Only SUPER_ADMIN can create ADMIN or SUPER_ADMIN accounts', 403);
+    }
+
     const user = await User.create({
       name,
       email: email.toLowerCase(),

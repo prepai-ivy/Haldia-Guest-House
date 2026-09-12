@@ -3,20 +3,20 @@ import { successResponse, errorResponse } from '@/lib/api-utils';
 import { getAuthUser } from '@/lib/auth';
 import GuestHouse from '@/lib/models/GuestHouse.model';
 import Room from '@/lib/models/Room.model';
+import Bed from '@/lib/models/Bed.model';
 import Booking from '@/lib/models/Booking.model';
+import RoomMaintenance from '@/lib/models/RoomMaintainence.modal';
+import { getISTDayBoundsUTC } from '@/lib/istDate';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const authUser = getAuthUser(request);
+    if (!authUser) return errorResponse('Unauthorized', 401);
+
     await connectToDatabase();
 
     /* ---------------- IST DAY BOUNDARY ---------------- */
-    const now = new Date();
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-    const nowIST = new Date(now.getTime() + IST_OFFSET);
-    const startOfTodayIST = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate());
-    const endOfTodayIST = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate() + 1);
-    const startUTC = new Date(startOfTodayIST.getTime() - IST_OFFSET);
-    const endUTC = new Date(endOfTodayIST.getTime() - IST_OFFSET);
+    const { startUTC, endUTC } = getISTDayBoundsUTC();
 
     /* ---------------- FETCH GUEST HOUSES ---------------- */
     const guestHouses = await GuestHouse.find({ isActive: true })
@@ -25,28 +25,29 @@ export async function GET() {
 
     const guestHouseIds = guestHouses.map((g) => g._id);
 
-    /* ---------------- ROOMS COUNT ---------------- */
-    const roomsAgg = await Room.aggregate([
-      { $match: { guestHouseId: { $in: guestHouseIds }, isActive: true } },
-      {
-        $group: {
-          _id: '$guestHouseId',
-          totalRooms: { $sum: 1 },
-          underMaintenance: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 'MAINTENANCE'] }, 1, 0],
-            },
-          },
-        },
-      },
+    /* ---------------- ROOMS + BEDS ---------------- */
+    const rooms = await Room.find({
+      guestHouseId: { $in: guestHouseIds },
+      isActive: true,
+    }).lean();
+    const roomIds = rooms.map((r) => r._id);
+
+    const totalBedsAgg = await Bed.aggregate([
+      { $match: { roomId: { $in: roomIds }, isActive: true } },
+      { $group: { _id: '$roomId', total: { $sum: 1 } } },
     ]);
+    const totalBedsMap = {};
+    totalBedsAgg.forEach((r) => { totalBedsMap[r._id.toString()] = r.total; });
 
-    const roomMap = {};
-    roomsAgg.forEach((r) => {
-      roomMap[r._id.toString()] = r;
+    const maintenanceRoomIds = await RoomMaintenance.distinct('roomId', {
+      roomId: { $in: roomIds },
+      status: 'ACTIVE',
+      startDate: { $lt: endUTC },
+      endDate: { $gt: startUTC },
     });
+    const maintenanceSet = new Set(maintenanceRoomIds.map((id) => id.toString()));
 
-    /* ---------------- CURRENTLY OCCUPIED ---------------- */
+    /* ---------------- CURRENTLY OCCUPIED (bed-level) ---------------- */
     // CHECKED_IN rooms are always occupied (no date filter – physically present)
     // BOOKED rooms are occupied only if their dates overlap today
     const activeBookings = await Booking.find({
@@ -61,31 +62,36 @@ export async function GET() {
       ],
     }).lean();
 
-    const occupiedMap = {};
+    const occupiedBedsPerRoom = {}; // roomId -> Set(bedId)
     activeBookings.forEach((b) => {
-      const ghId = b.guestHouseId.toString();
-      if (!occupiedMap[ghId]) occupiedMap[ghId] = new Set();
-      occupiedMap[ghId].add(b.roomId.toString());
+      if (!b.bedId) return; // legacy booking predating bed-level booking — not attributable to a bed
+      const rid = b.roomId.toString();
+      if (!occupiedBedsPerRoom[rid]) occupiedBedsPerRoom[rid] = new Set();
+      occupiedBedsPerRoom[rid].add(b.bedId.toString());
     });
 
     /* ---------------- FINAL RESPONSE ---------------- */
     const result = guestHouses.map((gh) => {
-      const roomStats = roomMap[gh._id.toString()] || {
-        totalRooms: 0,
-        underMaintenance: 0,
-      };
+      const ghRooms = rooms.filter((r) => r.guestHouseId.toString() === gh._id.toString());
+      const totalRooms = ghRooms.length;
 
-      const occupied = occupiedMap[gh._id.toString()]?.size || 0;
+      let underMaintenance = 0;
+      let occupied = 0;
+      ghRooms.forEach((r) => {
+        const idStr = r._id.toString();
+        if (maintenanceSet.has(idStr)) {
+          underMaintenance++;
+          return;
+        }
+        const total = totalBedsMap[idStr] || 0;
+        const occupiedBeds = occupiedBedsPerRoom[idStr]?.size || 0;
+        if (total > 0 && occupiedBeds >= total) occupied++;
+      });
 
-      const available = Math.max(
-        roomStats.totalRooms - occupied - roomStats.underMaintenance,
-        0
-      );
+      const available = Math.max(totalRooms - occupied - underMaintenance, 0);
 
       const utilization =
-        roomStats.totalRooms > 0
-          ? Math.round((occupied / roomStats.totalRooms) * 100)
-          : 0;
+        totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
 
       return {
         _id: gh._id,
@@ -93,8 +99,8 @@ export async function GET() {
         location: gh.location,
         category: gh.category,
 
-        totalRooms: roomStats.totalRooms,
-        underMaintenance: roomStats.underMaintenance,
+        totalRooms,
+        underMaintenance,
         occupied,
         available,
         utilization,

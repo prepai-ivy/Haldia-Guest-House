@@ -223,7 +223,7 @@ export default function UserManagement() {
                         <RoleIcon size={10} className="mr-1" />
                         {role?.label}
                       </Badge>
-                      {user.active === false ? (
+                      {user.isActive === false ? (
                         <Badge className="bg-destructive/15 text-destructive border-destructive/30 text-xs">Inactive</Badge>
                       ) : (
                         <Badge className="bg-success/15 text-success border-success/30 text-xs">Active</Badge>
@@ -252,8 +252,8 @@ export default function UserManagement() {
                     <DropdownMenuItem onClick={() => { setSelectedUser(user); setSelectedRole(user.role); setRoleModalOpen(true); }}>Change Role</DropdownMenuItem>
                     <DropdownMenuItem className="text-destructive" onClick={async () => {
                       if (!confirm("Deactivate this user?")) return;
-                      await updateUser(user._id, { active: false });
-                      setUsers((prev) => prev.map((u) => u._id === user._id ? { ...u, active: false } : u));
+                      await updateUser(user._id, { isActive: false });
+                      setUsers((prev) => prev.map((u) => u._id === user._id ? { ...u, isActive: false } : u));
                     }}>Deactivate</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -302,7 +302,7 @@ export default function UserManagement() {
                       <Badge className={role?.color}><RoleIcon size={12} className="mr-1" />{role?.label}</Badge>
                     </td>
                     <td className="px-6 py-4">
-                      {user.active === false ? (
+                      {user.isActive === false ? (
                         <Badge className="bg-destructive/15 text-destructive border-destructive/30">Inactive</Badge>
                       ) : (
                         <Badge className="bg-success/15 text-success border-success/30">Active</Badge>
@@ -318,8 +318,8 @@ export default function UserManagement() {
                           <DropdownMenuItem onClick={() => { setSelectedUser(user); setSelectedRole(user.role); setRoleModalOpen(true); }}>Change Role</DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={async () => {
                             if (!confirm("Deactivate this user?")) return;
-                            await updateUser(user._id, { active: false });
-                            setUsers((prev) => prev.map((u) => u._id === user._id ? { ...u, active: false } : u));
+                            await updateUser(user._id, { isActive: false });
+                            setUsers((prev) => prev.map((u) => u._id === user._id ? { ...u, isActive: false } : u));
                           }}>Deactivate</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

@@ -1,11 +1,18 @@
 import { connectToDatabase } from '@/lib/mongodb';
 import { successResponse, errorResponse } from '@/lib/api-utils';
 import Room from '@/lib/models/Room.model';
+import Bed from '@/lib/models/Bed.model';
 import Booking from '@/lib/models/Booking.model';
+import RoomMaintenance from '@/lib/models/RoomMaintainence.modal';
 import mongoose from 'mongoose';
+import { getAuthUser } from '@/lib/auth';
+import { getISTDayBoundsUTC } from '@/lib/istDate';
 
 export async function GET(request) {
   try {
+    const authUser = getAuthUser(request);
+    if (!authUser) return errorResponse('Unauthorized', 401);
+
     await connectToDatabase();
 
     const { searchParams } = new URL(request.url);
@@ -23,25 +30,7 @@ export async function GET(request) {
 
     /* ---------- IST DAY BOUNDARY ---------- */
 
-    const now = new Date();
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-
-    const nowIST = new Date(now.getTime() + IST_OFFSET);
-
-    const startOfTodayIST = new Date(
-      nowIST.getFullYear(),
-      nowIST.getMonth(),
-      nowIST.getDate()
-    );
-
-    const endOfTodayIST = new Date(
-      nowIST.getFullYear(),
-      nowIST.getMonth(),
-      nowIST.getDate() + 1
-    );
-
-    const startUTC = new Date(startOfTodayIST.getTime() - IST_OFFSET);
-    const endUTC = new Date(endOfTodayIST.getTime() - IST_OFFSET);
+    const { startUTC, endUTC } = getISTDayBoundsUTC();
 
     /* ---------- FETCH ROOMS ---------- */
 
@@ -49,8 +38,18 @@ export async function GET(request) {
       guestHouseId: objId,
       isActive: true,
     }).lean();
+    const roomIds = rooms.map((r) => r._id);
 
-    /* ---------- TODAY OCCUPANCY ---------- */
+    /* ---------- BED COUNTS PER ROOM ---------- */
+
+    const totalBedsAgg = await Bed.aggregate([
+      { $match: { roomId: { $in: roomIds }, isActive: true } },
+      { $group: { _id: '$roomId', total: { $sum: 1 } } },
+    ]);
+    const totalBedsMap = {};
+    totalBedsAgg.forEach((r) => { totalBedsMap[r._id.toString()] = r.total; });
+
+    /* ---------- TODAY OCCUPANCY (bed-level) ---------- */
 
     const todayBookings = await Booking.find({
       guestHouseId: objId,
@@ -64,21 +63,38 @@ export async function GET(request) {
       ],
     }).lean();
 
-    const occupiedRoomIds = new Set(
-      todayBookings.map(b => b.roomId.toString())
-    );
+    const occupiedBedsPerRoom = {}; // roomId -> Set(bedId)
+    todayBookings.forEach((b) => {
+      if (!b.bedId) return; // legacy booking predating bed-level booking — not attributable to a bed
+      const rid = b.roomId.toString();
+      if (!occupiedBedsPerRoom[rid]) occupiedBedsPerRoom[rid] = new Set();
+      occupiedBedsPerRoom[rid].add(b.bedId.toString());
+    });
+
+    /* ---------- TODAY MAINTENANCE ---------- */
+
+    const maintenanceRoomIds = await RoomMaintenance.distinct('roomId', {
+      roomId: { $in: roomIds },
+      status: 'ACTIVE',
+      startDate: { $lt: endUTC },
+      endDate: { $gt: startUTC },
+    });
+    const maintenanceSet = new Set(maintenanceRoomIds.map((id) => id.toString()));
 
     /* ---------- ROOM LEVEL STATS ---------- */
 
     const roomStats = rooms.map(room => {
-      const isUnderMaintenance = room.status === 'MAINTENANCE';
-      const isOccupied = occupiedRoomIds.has(room._id.toString());
+      const idStr = room._id.toString();
+      const totalBeds = totalBedsMap[idStr] || 0;
+      const occupiedBeds = occupiedBedsPerRoom[idStr]?.size || 0;
+      const isUnderMaintenance = maintenanceSet.has(idStr);
+      const isFullyOccupied = totalBeds > 0 && occupiedBeds >= totalBeds;
 
       let todayStatus = 'AVAILABLE';
 
       if (isUnderMaintenance) {
         todayStatus = 'MAINTENANCE';
-      } else if (isOccupied) {
+      } else if (isFullyOccupied) {
         todayStatus = 'OCCUPIED';
       }
 
@@ -89,8 +105,9 @@ export async function GET(request) {
         capacity: room.capacity,
         floor: room.floor,
         amenities: room.amenities,
-        status: room.status,
         todayStatus,
+        totalBeds,
+        occupiedBeds,
         isAvailableForAllocation:
           todayStatus === 'AVAILABLE',
       };

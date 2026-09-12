@@ -1,11 +1,16 @@
 import { connectToDatabase } from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking.model';
+import Bed from '@/lib/models/Bed.model';
 import { successResponse, errorResponse } from '@/lib/api-utils';
+import { getAuthUser } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 import mongoose from 'mongoose';
 
 export async function GET(request) {
   try {
+    const authUser = getAuthUser(request);
+    if (!authUser) return errorResponse('Unauthorized', 401);
+
     await connectToDatabase();
 
     const { searchParams } = new URL(request.url);
@@ -33,7 +38,10 @@ export async function GET(request) {
 
     const query = {
       roomId: new ObjectId(roomId),
-      status: { $in: ['BOOKED', 'CHECKED_IN'] },
+      // PENDING included too — matches the bed-assignment logic elsewhere, which treats
+      // a pending request as already holding its bed so two overlapping requests can't
+      // both land on it.
+      status: { $in: ['PENDING', 'BOOKED', 'CHECKED_IN'] },
       checkInDate: { $lt: end },
       checkOutDate: { $gt: start },
     };
@@ -43,20 +51,26 @@ export async function GET(request) {
     }
 
     const bookings = await Booking.find(query)
-      .select('checkInDate checkOutDate')
+      .select('checkInDate checkOutDate bedId')
       .lean();
 
-    /* -------------------- BUILD BLOCKED SLOTS -------------------- */
+    const totalBeds = await Bed.countDocuments({ roomId, isActive: true });
+
+    /* -------------------- BUILD BLOCKED SLOTS --------------------
+       Tagged with bedId so the caller can tell whether a given moment has every bed
+       taken (a real conflict) or just some of them (another bed is still free). */
 
     const blockedSlots = bookings.map((b) => ({
       from: b.checkInDate.toISOString(),
       to: b.checkOutDate.toISOString(),
+      bedId: b.bedId ? b.bedId.toString() : null,
     }));
 
     return successResponse({
       roomId,
       from: start.toISOString(),
       to: end.toISOString(),
+      totalBeds,
       blockedSlots,
     });
   } catch (err) {

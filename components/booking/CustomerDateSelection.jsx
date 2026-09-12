@@ -1,6 +1,9 @@
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { DateSelectionCard } from "./DateSelectionCard";
 
+// No <DashboardLayout> wrapper here — this component is one of several swapped in and out
+// as the booking flow's "current step" by app/(dashboard)/bookings/new/page.jsx, which wraps
+// the whole flow in a single DashboardLayout. Wrapping here too used to mean every step
+// transition unmounted and remounted the entire layout (Sidebar/Header included).
 export function CustomerDateSelection({
   range,
   onSelect,
@@ -14,28 +17,26 @@ export function CustomerDateSelection({
   isDatesReady
 }) {
   return (
-    <DashboardLayout>
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Book a Room</h1>
-          <p className="text-muted-foreground">Select dates to check availability</p>
-        </div>
-
-        <DateSelectionCard
-          range={range}
-          onSelect={onSelect}
-          checkInTime={checkInTime}
-          checkOutTime={checkOutTime}
-          onCheckInTimeChange={onCheckInTimeChange}
-          onCheckOutTimeChange={onCheckOutTimeChange}
-          onReset={onReset}
-          onAction={onViewRooms}
-          disabledDates={disabledDates}
-          title="Select Dates"
-          actionButtonText="View Rooms"
-        />
+    <div className="max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Book a Room</h1>
+        <p className="text-muted-foreground">Select dates to check availability</p>
       </div>
-    </DashboardLayout>
+
+      <DateSelectionCard
+        range={range}
+        onSelect={onSelect}
+        checkInTime={checkInTime}
+        checkOutTime={checkOutTime}
+        onCheckInTimeChange={onCheckInTimeChange}
+        onCheckOutTimeChange={onCheckOutTimeChange}
+        onReset={onReset}
+        onAction={onViewRooms}
+        disabledDates={disabledDates}
+        title="Select Dates"
+        actionButtonText="View Rooms"
+      />
+    </div>
   );
 }

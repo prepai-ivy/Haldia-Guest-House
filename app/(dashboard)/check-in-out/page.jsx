@@ -8,8 +8,11 @@ import {
   fetchCheckInOutBookings,
   updateBookingStatus,
 } from "@/services/bookingApi";
+import { useRequireRole } from "@/hooks/use-require-role";
+import { getISTDayBoundsUTC } from "@/lib/istDate";
 
 export default function CheckInOut() {
+  const { authorized, checking } = useRequireRole(["ADMIN", "SUPER_ADMIN"]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,13 +29,7 @@ export default function CheckInOut() {
   }, []);
 
   /* ---- IST day boundaries (consistent with stats APIs) ---- */
-  const now = new Date();
-  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-  const nowIST = new Date(now.getTime() + IST_OFFSET);
-  const startOfTodayIST = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate());
-  const endOfTodayIST = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate() + 1);
-  const startUTC = new Date(startOfTodayIST.getTime() - IST_OFFSET);
-  const endUTC = new Date(endOfTodayIST.getTime() - IST_OFFSET);
+  const { startUTC, endUTC } = getISTDayBoundsUTC();
 
   /* BOOKED whose stay overlaps today — same rule as stats APIs */
   const awaitingCheckIn = bookings.filter((b) => {
@@ -52,6 +49,10 @@ export default function CheckInOut() {
     const updated = await updateBookingStatus(id, statusMap[action] || action);
 
     setBookings((prev) => prev.map((b) => (b._id === id ? updated : b)));
+  }
+
+  if (checking || !authorized) {
+    return null;
   }
 
   if (loading) {

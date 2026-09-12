@@ -1,4 +1,4 @@
-import { ApiError } from '@/lib/apiClient';
+import { apiClient, ApiError } from '@/lib/apiClient';
 
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 export const ALLOWED_UPLOAD_TYPES = [
@@ -46,4 +46,12 @@ export async function uploadFile(file, folder) {
 
   const json = await res.json();
   return json.data;
+}
+
+export async function deleteUploadedFile(blobPath) {
+  const res = await apiClient('/upload', {
+    method: 'DELETE',
+    body: { blobPath },
+  });
+  return res.data;
 }

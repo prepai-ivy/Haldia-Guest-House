@@ -39,6 +39,9 @@ export async function POST(request) {
       return errorResponse("Invalid OTP", 400);
     }
 
+    record.verified = true;
+    await record.save();
+
     return successResponse(
       { message: "Email verified successfully" },
       200

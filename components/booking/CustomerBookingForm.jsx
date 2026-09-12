@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { AttachmentUpload } from "@/components/booking/AttachmentUpload";
 
 const PAYMENT_MODES = [
@@ -32,7 +31,6 @@ export function CustomerBookingForm({
   checkOutTime
 }) {
   return (
-    <DashboardLayout>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <button
@@ -147,6 +145,5 @@ export function CustomerBookingForm({
           </div>
         </form>
       </div>
-    </DashboardLayout>
   );
 }

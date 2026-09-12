@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchGuestHouseStats } from "@/services/guestHouseStatsApi";
 import { fetchDashboardStats } from "@/services/dashboardStatsApi";
 import { fetchBookings } from "@/services/dashboardApi";
+import { getISTDayBoundsUTC } from "@/lib/istDate";
 import { updateBookingStatus } from "@/services/bookingApi";
 
 export default function Dashboard() {
@@ -51,13 +52,7 @@ export default function Dashboard() {
   }, [user, isAdmin]);
 
   /* ---- IST day boundaries ---- */
-  const now = new Date();
-  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-  const nowIST = new Date(now.getTime() + IST_OFFSET);
-  const startOfTodayIST = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate());
-  const endOfTodayIST = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate() + 1);
-  const startUTC = new Date(startOfTodayIST.getTime() - IST_OFFSET);
-  const endUTC = new Date(endOfTodayIST.getTime() - IST_OFFSET);
+  const { startUTC, endUTC } = getISTDayBoundsUTC();
 
   const todaysArrivals = bookings.filter((b) => {
     const checkIn = new Date(b.checkInDate);
@@ -69,26 +64,11 @@ export default function Dashboard() {
   });
 
   async function handleBookingAction(id, action) {
-    try {
-      setActionLoading((p) => ({ ...p, [id]: true }));
-      setActionErrors((p) => ({ ...p, [id]: null }));
-
-      const updated = await updateBookingStatus(id, action);
-
-      setBookings((prev) =>
-        prev.map((b) => (b._id === id ? updated : b))
-      );
-
-      return updated;
-    } catch (err) {
-      setActionErrors((p) => ({
-        ...p,
-        [id]: err.message || "Action failed",
-      }));
-      throw err;
-    } finally {
-      setActionLoading((p) => ({ ...p, [id]: false }));
-    }
+    // BookingCard tracks its own per-card loading/error state around this call
+    // (via its onAction prop) — this handler just needs to apply the result.
+    const updated = await updateBookingStatus(id, action);
+    setBookings((prev) => prev.map((b) => (b._id === id ? updated : b)));
+    return updated;
   }
 
   const pendingRequests = bookings.filter((b) => b.status === "PENDING");

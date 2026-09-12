@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function Notification({
@@ -11,6 +11,16 @@ export default function Notification({
   duration = 5000,
 }) {
   const [progress, setProgress] = useState(100);
+
+  // Callers typically pass an inline `onClose={() => ...}`, which is a new function
+  // reference on every parent re-render (e.g. every keystroke in a form elsewhere on the
+  // page). Keeping it in a ref instead of the effect's dependency array means the
+  // countdown/progress bar no longer restarts on every unrelated re-render — only when
+  // the notification is actually replaced (title/message identity) or unmounted.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     const start = Date.now();
@@ -23,14 +33,15 @@ export default function Notification({
     }, 50);
 
     const timer = setTimeout(() => {
-      onClose();
+      onCloseRef.current();
     }, duration);
 
     return () => {
       clearInterval(interval);
       clearTimeout(timer);
     };
-  }, [onClose, duration]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duration, title, message]);
 
   const isSuccess = type === "success";
 

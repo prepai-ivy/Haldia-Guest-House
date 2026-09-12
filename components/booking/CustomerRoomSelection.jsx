@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/context/AuthContext";
 import { fetchGrades } from "@/services/gradeApi";
 
@@ -20,13 +19,20 @@ export function CustomerRoomSelection({
   onRoomSelect,
   occupancyType,
   onOccupancyChange,
+  grades: gradesProp,
 }) {
   const { user } = useAuth();
-  const [grades, setGrades] = useState([]);
+  const [gradesState, setGradesState] = useState([]);
+  // Prefer grades passed down from the parent (fetched once for the whole booking flow) —
+  // this component used to fetch its own copy every time it mounted, which happened on
+  // every "Change Date" round-trip since it's swapped in/out as a distinct step component.
+  // Falls back to fetching its own if no grades prop is given, so it still works standalone.
+  const grades = gradesProp ?? gradesState;
 
   useEffect(() => {
-    fetchGrades().then(setGrades).catch(() => setGrades([]));
-  }, []);
+    if (gradesProp) return;
+    fetchGrades().then(setGradesState).catch(() => setGradesState([]));
+  }, [gradesProp]);
 
   const userGrade = grades.find((g) => g.code === user?.grade);
   // No grade assigned: fall back to Double-only, matching the backend default
@@ -42,7 +48,6 @@ export function CustomerRoomSelection({
   const roomsForOccupancy = availableRooms.filter((r) => r.type === occupancyType);
 
   return (
-    <DashboardLayout>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -143,7 +148,7 @@ export function CustomerRoomSelection({
                             <div>
                               <p className="font-medium text-sm">Room {room.roomNumber}</p>
                               <p className="text-xs text-muted-foreground">
-                                {room.capacity} guests
+                                {room.availableBeds ?? room.totalBeds ?? room.capacity} of {room.totalBeds ?? room.capacity} beds available
                               </p>
                             </div>
                             <div className="text-primary text-xs font-semibold">Select</div>
@@ -161,6 +166,5 @@ export function CustomerRoomSelection({
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }

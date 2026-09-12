@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
@@ -13,14 +13,18 @@ import {
   Plus,
   Edit,
   Trash2,
+  Wrench,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import MaintenanceModal from "@/components/rooms/MaintenanceModal";
 
 import { fetchGuestHouses } from "@/services/guestHouseApi";
 import { fetchRoomStats } from "@/services/roomStatsApi";
 import { deleteRoom } from "@/services/roomApi";
+import { useAuth } from "@/context/AuthContext";
+import { useRequireRole } from "@/hooks/use-require-role";
 
 const amenityIcons = {
   WiFi: Wifi,
@@ -37,6 +41,8 @@ const statusColors = {
 
 export default function RoomInventory() {
   const router = useRouter();
+  const { isSuperAdmin } = useAuth();
+  const { authorized, checking } = useRequireRole(["ADMIN", "SUPER_ADMIN"]);
 
   const [guestHouses, setGuestHouses] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -48,6 +54,19 @@ export default function RoomInventory() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [maintenanceRoom, setMaintenanceRoom] = useState(null);
+
+  async function refreshStats() {
+    if (!selectedGH) return;
+    try {
+      const stats = await fetchRoomStats(selectedGH);
+      setRooms(stats.rooms);
+      setSummary(stats.summary);
+    } catch (err) {
+      console.error("Failed to load room stats", err);
+    }
+  }
 
   async function handleDeleteRoom() {
     if (!roomToDelete) return;
@@ -90,21 +109,22 @@ export default function RoomInventory() {
     loadData();
   }, []);
 
+  // The mount effect above already fetches stats for the initial guest house as part of
+  // its own load sequence (so `loading` covers it) — skip that first run here to avoid
+  // fetching /api/rooms-stats twice on page load; still refetch on every later GH switch.
+  const isFirstStatsLoad = useRef(true);
   useEffect(() => {
     if (!selectedGH) return;
-
-    async function loadStats() {
-      try {
-        const stats = await fetchRoomStats(selectedGH);
-        setRooms(stats.rooms);
-        setSummary(stats.summary);
-      } catch (err) {
-        console.error("Failed to load room stats", err);
-      }
+    if (isFirstStatsLoad.current) {
+      isFirstStatsLoad.current = false;
+      return;
     }
-
-    loadStats();
+    refreshStats();
   }, [selectedGH]);
+
+  if (checking || !authorized) {
+    return null;
+  }
 
   if (loading) {
     return (
@@ -232,7 +252,7 @@ export default function RoomInventory() {
 
                   <div className="flex items-center gap-2 text-sm mb-3">
                     <Bed size={16} />
-                    Capacity: {room.capacity}
+                    {room.occupiedBeds ?? 0} of {room.totalBeds ?? room.capacity} beds occupied today
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -263,14 +283,25 @@ export default function RoomInventory() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-destructive hover:bg-destructive/100"
-                      onClick={() => {
-                        setRoomToDelete(room);
-                        setConfirmOpen(true);
-                      }}
+                      onClick={() => setMaintenanceRoom(room)}
+                      title="Schedule maintenance"
                     >
-                      <Trash2 size={14} />
+                      <Wrench size={14} />
                     </Button>
+
+                    {isSuperAdmin && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/100"
+                        onClick={() => {
+                          setRoomToDelete(room);
+                          setConfirmOpen(true);
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -293,6 +324,14 @@ export default function RoomInventory() {
         }}
         onConfirm={handleDeleteRoom}
       />
+      {maintenanceRoom && (
+        <MaintenanceModal
+          room={maintenanceRoom}
+          guestHouseId={selectedGH}
+          onClose={() => setMaintenanceRoom(null)}
+          onChanged={refreshStats}
+        />
+      )}
     </DashboardLayout>
   );
 }

@@ -1,6 +1,8 @@
 import { connectToDatabase } from '@/lib/mongodb';
 import { successResponse, errorResponse } from '@/lib/api-utils';
 import Room from '@/lib/models/Room.model';
+import Bed from '@/lib/models/Bed.model';
+import Booking from '@/lib/models/Booking.model';
 import mongoose from 'mongoose';
 import { getAuthUser } from '@/lib/auth';
 
@@ -50,10 +52,14 @@ export async function PATCH(request, { params }) {
       return errorResponse('Invalid room id', 400);
     }
 
+    const room = await Room.findById(id);
+    if (!room) {
+      return errorResponse('Room not found', 404);
+    }
+
     const updatePayload = {};
 
     if (body.roomNumber !== undefined) updatePayload.roomNumber = body.roomNumber;
-    if (body.capacity !== undefined) updatePayload.capacity = body.capacity;
     if (body.floor !== undefined) updatePayload.floor = body.floor;
     if (body.amenities !== undefined) updatePayload.amenities = body.amenities;
 
@@ -65,12 +71,57 @@ export async function PATCH(request, { params }) {
       updatePayload.type = body.type;
     }
 
-    if (body.status) {
-      if (!['ACTIVE', 'MAINTENANCE'].includes(body.status)) {
-        console.log('[Room PATCH] 400 - Invalid room status:', body.status);
-        return errorResponse('Invalid room status', 400);
+    // Maintenance is scheduled exclusively via POST /api/rooms/[id]/maintenance now
+    // (that flow checks for conflicting bookings first) — a direct status toggle here
+    // would bypass that check entirely, so it's no longer accepted.
+
+    /* -------- CAPACITY CHANGE: keep Bed documents in sync -------- */
+    if (body.capacity !== undefined && body.capacity !== room.capacity) {
+      const newCapacity = body.capacity;
+      if (!Number.isInteger(newCapacity) || newCapacity < 1) {
+        return errorResponse('capacity must be a positive integer', 400);
       }
-      updatePayload.status = body.status;
+
+      if (newCapacity > room.capacity) {
+        for (let n = room.capacity + 1; n <= newCapacity; n++) {
+          // $set (not $setOnInsert) so a bed that was previously deactivated by a capacity
+          // decrease gets reactivated here too — $setOnInsert only fires on a brand-new
+          // insert, so it silently no-opped against an existing-but-inactive bed doc,
+          // permanently stranding it inactive even after capacity was raised back up.
+          await Bed.updateOne(
+            { roomId: id, bedNumber: n },
+            { $set: { isActive: true } },
+            { upsert: true }
+          );
+        }
+      } else {
+        const bedsToRemove = await Bed.find({
+          roomId: id,
+          bedNumber: { $gt: newCapacity },
+          isActive: true,
+        });
+
+        // PENDING included too — an unapproved request would otherwise survive a capacity
+        // reduction and could later be approved onto a bed that's since been deactivated.
+        const activeBookingOnRemovedBed = await Booking.findOne({
+          bedId: { $in: bedsToRemove.map((b) => b._id) },
+          status: { $in: ['PENDING', 'BOOKED', 'CHECKED_IN'] },
+        });
+
+        if (activeBookingOnRemovedBed) {
+          return errorResponse(
+            'Cannot reduce capacity — one of the beds being removed has a pending or active booking',
+            409
+          );
+        }
+
+        await Bed.updateMany(
+          { _id: { $in: bedsToRemove.map((b) => b._id) } },
+          { isActive: false }
+        );
+      }
+
+      updatePayload.capacity = newCapacity;
     }
 
     const updatedRoom = await Room.findByIdAndUpdate(
@@ -78,10 +129,6 @@ export async function PATCH(request, { params }) {
       { $set: updatePayload },
       { new: true }
     );
-
-    if (!updatedRoom) {
-      return errorResponse('Room not found', 404);
-    }
 
     return successResponse(updatedRoom);
   } catch (err) {
@@ -125,7 +172,9 @@ export async function DELETE(request, { params }) {
       return errorResponse('Room not found', 404);
     }
 
-    return successResponse({ message: 'Room deactivated (maintenance)' });
+    await Bed.updateMany({ roomId: id }, { isActive: false });
+
+    return successResponse({ message: 'Room deactivated' });
   } catch (err) {
     console.error('[Room DELETE]', err);
     return errorResponse('Internal server error', 500);

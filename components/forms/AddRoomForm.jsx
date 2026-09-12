@@ -18,12 +18,14 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { fetchGuestHouses } from "@/services/guestHouseApi";
 import { createRoom, updateRoom, fetchRoomById } from "@/services/roomApi";
 import Notification from "@/components/ui/Notification";
+import { useRequireRole } from "@/hooks/use-require-role";
 
 export default function AddRoomForm() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id;
   const isEdit = Boolean(id);
+  const { authorized, checking } = useRequireRole(["ADMIN", "SUPER_ADMIN"]);
 
   const [guestHouses, setGuestHouses] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,6 @@ export default function AddRoomForm() {
     type: "SINGLE",
     capacity: 1,
     floor: 1,
-    status: "ACTIVE",
   });
 
   useEffect(() => {
@@ -55,7 +56,6 @@ export default function AddRoomForm() {
             type: room.type,
             capacity: room.capacity,
             floor: room.floor,
-            status: room.status,
           });
         }
       } finally {
@@ -116,6 +116,10 @@ export default function AddRoomForm() {
       setLoading(false);
     }
   };
+
+  if (checking || !authorized) {
+    return null;
+  }
 
   if (initialLoading) {
     return (
@@ -230,23 +234,10 @@ export default function AddRoomForm() {
             />
           </div>
 
-          {/* Status (edit only) */}
           {isEdit && (
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={form.status}
-                onValueChange={(v) => setForm({ ...form, status: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              To take this room offline, schedule maintenance for it from Room Inventory instead of editing its status here.
+            </p>
           )}
 
           <Button className="w-full" disabled={loading}>

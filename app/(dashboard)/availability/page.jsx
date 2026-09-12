@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { fetchGuestHouses } from "@/services/guestHouseApi";
-import { fetchDashboardStats } from "@/services/dashboardStatsApi";
 import { fetchAllAvailableRooms } from "@/services/roomApi";
 import { formatDateIST } from "@/utils/date";
 
@@ -30,11 +29,7 @@ export default function RoomAvailability() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [gh, dashboardStats] = await Promise.all([
-          fetchGuestHouses(),
-          fetchDashboardStats(),
-        ]);
-
+        const gh = await fetchGuestHouses();
         setGuestHouses(gh);
       } catch (err) {
         console.error("Failed to load room availability", err);

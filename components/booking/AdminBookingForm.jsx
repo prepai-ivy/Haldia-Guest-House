@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ArrowLeft, User, Building2, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { AttachmentUpload } from "@/components/booking/AttachmentUpload";
 
 const PAYMENT_MODES = [
@@ -41,7 +39,12 @@ export function AdminBookingForm({
   checkOutTime,
   setShowDateSelection
 }) {
-  const [dateSection] = useState(() => (
+  // Plain computed value, not useState — a lazy useState initializer only runs once ever,
+  // freezing this summary at whatever selectedGuestHouse/selectedRoom/dates were on first
+  // mount. It happened to look fine so far only because the parent remounts this whole
+  // component on any date/room change; recomputing on every render is simpler and correct
+  // regardless of how the parent behaves.
+  const dateSection = (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Building2 size={18} />
@@ -67,7 +70,7 @@ export function AdminBookingForm({
         </div>
       </div>
     </div>
-  ));
+  );
 
   const handleBack = () => {
     if (step > 1) {
@@ -80,7 +83,6 @@ export function AdminBookingForm({
   };
 
   return (
-    <DashboardLayout>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <button
@@ -293,6 +295,5 @@ export function AdminBookingForm({
           )}
         </form>
       </div>
-    </DashboardLayout>
   );
 }

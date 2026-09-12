@@ -11,12 +11,14 @@ import {
   Layers,
   AlertCircle,
   ArrowLeft,
+  ArrowUpRight,
   Loader2,
 } from "lucide-react";
 import { createGuestHouse } from "@/services/guestHouseApi";
-import { createRoom, fetchRoomsByGuestHouse } from "@/services/roomApi";
+import { createRoom } from "@/services/roomApi";
 import { fetchGuestHouseById, updateGuestHouse } from "@/services/guestHouseApi";
 import Notification from "@/components/ui/Notification";
+import { useRequireRole } from "@/hooks/use-require-role";
 
 function hasDuplicateRoomNumbers(rooms) {
   const numbers = rooms.map((r) => r.roomNumber?.trim()).filter(Boolean);
@@ -34,6 +36,7 @@ export default function AddGuestHouseForm() {
   const params = useParams();
   const id = params?.id;
   const isEdit = Boolean(id);
+  const { authorized, checking } = useRequireRole(["ADMIN", "SUPER_ADMIN"]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -65,18 +68,16 @@ export default function AddGuestHouseForm() {
     setIsSubmitting(true);
 
     try {
-      const totalRooms = rooms.length;
-      const capacity = rooms.reduce((sum, r) => sum + r.capacity, 0);
-
       if (isEdit) {
         await updateGuestHouse(id, {
           name: formData.name,
           location: formData.location,
           category: formData.category,
-          totalRooms,
-          capacity,
         });
       } else {
+        const totalRooms = rooms.length;
+        const capacity = rooms.reduce((sum, r) => sum + r.capacity, 0);
+
         const gh = await createGuestHouse({
           name: formData.name,
           location: formData.location,
@@ -138,29 +139,22 @@ export default function AddGuestHouseForm() {
 
     async function loadData() {
       const gh = await fetchGuestHouseById(id);
-      const roomData = await fetchRoomsByGuestHouse(id);
 
       setFormData({
         name: gh.name,
         location: gh.location,
         category: gh.category,
       });
-
-      setRooms(
-        roomData.map((r) => ({
-          _id: r._id,
-          roomNumber: r.roomNumber,
-          type: r.type,
-          capacity: r.capacity,
-          floor: r.floor,
-        }))
-      );
     }
 
     loadData();
   }, [id, isEdit]);
 
-  const hasDuplicates = hasDuplicateRoomNumbers(rooms);
+  const hasDuplicates = !isEdit && hasDuplicateRoomNumbers(rooms);
+
+  if (checking || !authorized) {
+    return null;
+  }
 
   return (
     <DashboardLayout>
@@ -248,7 +242,33 @@ export default function AddGuestHouseForm() {
               </div>
             </Card>
 
-            {/* Inventory */}
+            {/* Inventory — rooms are created here only when first creating a guest house.
+                Editing rooms afterward happens exclusively in Room Inventory, which is the
+                only place that actually persists room changes (add/edit/delete, plus keeping
+                Bed records in sync) — this panel used to also appear in edit mode but never
+                saved anything it showed here, which was actively misleading. */}
+            {isEdit ? (
+              <Card>
+                <div className="p-6 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers size={18} />
+                    <div>
+                      <h2 className="font-semibold">Room Inventory</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Add, edit, or remove rooms for this guest house from Room Inventory.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push(`/room-inventory?gh=${id}`)}
+                  >
+                    Open Room Inventory <ArrowUpRight size={14} className="ml-1" />
+                  </Button>
+                </div>
+              </Card>
+            ) : (
             <Card>
               <div className="p-6 border-b flex items-center justify-between">
                 <h2 className="font-semibold flex items-center gap-2">
@@ -361,6 +381,7 @@ export default function AddGuestHouseForm() {
                 })}
               </div>
             </Card>
+            )}
           </div>
 
           {/* RIGHT SIDE */}

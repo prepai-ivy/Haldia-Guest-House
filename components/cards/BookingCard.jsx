@@ -87,6 +87,7 @@ export default function BookingCard({
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [blockedSlots, setBlockedSlots] = useState([]);
+  const [totalBedsInTargetRoom, setTotalBedsInTargetRoom] = useState(0);
   const [confirmOverride, setConfirmOverride] = useState(false);
   const [attachmentLoading, setAttachmentLoading] = useState(false);
 
@@ -111,6 +112,7 @@ export default function BookingCard({
   const fetchBlockedSlotsForRoom = async (roomId) => {
     if (!roomId) {
       setBlockedSlots([]);
+      setTotalBedsInTargetRoom(0);
       return;
     }
     const now = new Date();
@@ -125,8 +127,10 @@ export default function BookingCard({
         excludeId: booking._id,
       });
       setBlockedSlots(data?.blockedSlots || []);
+      setTotalBedsInTargetRoom(data?.totalBeds || 0);
     } catch (err) {
       setBlockedSlots([]);
+      setTotalBedsInTargetRoom(0);
     }
   };
 
@@ -189,7 +193,9 @@ export default function BookingCard({
     fetchBlockedSlotsForRoom(roomId);
   }
 
-  // Check if the edited dates conflict with any blocked slot
+  // Check if the edited dates conflict with existing bookings — bed-aware: with multiple
+  // beds in a room, this only flags a real conflict when EVERY bed is taken for that
+  // window, since the save will auto-assign whichever bed is still free.
   const dateConflict = useMemo(() => {
     if (!editData.checkInDate || !editData.checkOutDate || blockedSlots.length === 0)
       return null;
@@ -198,32 +204,35 @@ export default function BookingCard({
     const checkOut = new Date(istLocalToISO(editData.checkOutDate));
     if (isNaN(checkIn) || isNaN(checkOut) || checkIn >= checkOut) return null;
 
-    const overlapDetails = blockedSlots
-      .map((slot) => {
-        const slotFrom = new Date(slot.from);
-        const slotTo = new Date(slot.to);
-        if (checkIn < slotTo && checkOut > slotFrom) {
-          return {
-            from: slotFrom,
-            to: slotTo,
-            range: `${slotFrom.toLocaleString("en-IN", {
-              day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-              hour12: true, timeZone: "Asia/Kolkata",
-            })} – ${slotTo.toLocaleString("en-IN", {
-              day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-              hour12: true, timeZone: "Asia/Kolkata",
-            })}`,
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
+    const overlapping = blockedSlots.filter((slot) => {
+      const slotFrom = new Date(slot.from);
+      const slotTo = new Date(slot.to);
+      return checkIn < slotTo && checkOut > slotFrom;
+    });
 
-    if (overlapDetails.length === 0) return null;
+    if (overlapping.length === 0) return null;
 
-    const uniqueRanges = [...new Set(overlapDetails.map((d) => d.range))];
+    const occupiedBedIds = new Set(overlapping.map((s) => s.bedId).filter(Boolean));
+    const hasUnattributedOverlap = overlapping.some((s) => !s.bedId);
+
+    // A free bed still exists — not a real conflict, the save will use it.
+    if (totalBedsInTargetRoom > 0 && !hasUnattributedOverlap && occupiedBedIds.size < totalBedsInTargetRoom) {
+      return null;
+    }
+
+    const uniqueRanges = [...new Set(overlapping.map((slot) => {
+      const slotFrom = new Date(slot.from);
+      const slotTo = new Date(slot.to);
+      return `${slotFrom.toLocaleString("en-IN", {
+        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+        hour12: true, timeZone: "Asia/Kolkata",
+      })} – ${slotTo.toLocaleString("en-IN", {
+        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+        hour12: true, timeZone: "Asia/Kolkata",
+      })}`;
+    }))];
     return `Conflicts with existing booking(s): ${uniqueRanges.join("; ")}`;
-  }, [editData.checkInDate, editData.checkOutDate, blockedSlots]);
+  }, [editData.checkInDate, editData.checkOutDate, blockedSlots, totalBedsInTargetRoom]);
 
   // Reload blocked slots whenever the target room changes during edit
   useEffect(() => {
@@ -242,6 +251,7 @@ export default function BookingCard({
         department: editData.department,
         purpose: editData.purpose,
         paymentMode: editData.paymentMode,
+        guestHouseId: editData.guestHouseId,
         roomId: editData.roomId,
         checkInDate: istLocalToISO(editData.checkInDate),
         checkOutDate: istLocalToISO(editData.checkOutDate),
@@ -448,6 +458,7 @@ export default function BookingCard({
               className="text-xs px-2 py-0.5 bg-foreground text-background"
             >
               Room #{room?.roomNumber || booking?.roomId?.roomNumber || "—"}
+              {booking?.bedId?.bedNumber ? ` · Bed ${booking.bedId.bedNumber}` : ""}
             </Badge>
             <span className="text-xs text-muted-foreground">
               {guestHouse?.name || booking?.guestHouseId?.name || "—"}

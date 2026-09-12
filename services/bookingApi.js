@@ -6,10 +6,10 @@ export async function fetchBookings(params = {}) {
   return res.data || [];
 }
 
-export async function updateBookingStatus(id, status) {
+export async function updateBookingStatus(id, status, extra = {}) {
   const res = await apiClient(`/bookings/${id}`, {
     method: 'PATCH',
-    body: { status },
+    body: { status, ...extra },
   });
   return res.data;
 }

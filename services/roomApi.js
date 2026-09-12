@@ -47,3 +47,25 @@ export async function fetchRoomById(id) {
   const res = await apiClient(`/rooms/${id}`);
   return res.data;
 }
+
+export async function fetchRoomMaintenance(roomId) {
+  const res = await apiClient(`/rooms/${roomId}/maintenance`);
+  return res.data || [];
+}
+
+// Returns { created: true, maintenance } on success, or { created: false, conflicts } if
+// there are BOOKED reservations overlapping the requested window that need resolving first.
+export async function scheduleRoomMaintenance(roomId, payload) {
+  const res = await apiClient(`/rooms/${roomId}/maintenance`, {
+    method: 'POST',
+    body: payload,
+  });
+  return res.data;
+}
+
+export async function cancelRoomMaintenance(roomId, maintenanceId) {
+  const res = await apiClient(`/rooms/${roomId}/maintenance/${maintenanceId}`, {
+    method: 'DELETE',
+  });
+  return res.data;
+}

@@ -4,10 +4,14 @@ import GuestHouse from '@/lib/models/GuestHouse.model';
 import mongoose from 'mongoose';
 import { getAuthUser } from '@/lib/auth';
 import Room from '@/lib/models/Room.model';
+import Bed from '@/lib/models/Bed.model';
 import Booking from '@/lib/models/Booking.model';
 
 export async function GET(request, context) {
   try {
+    const authUser = getAuthUser(request);
+    if (!authUser) return errorResponse('Unauthorized', 401);
+
     await connectToDatabase();
 
     const { id } = context.params;
@@ -115,8 +119,13 @@ export async function DELETE(request, context) {
     }
 
     // Disable all rooms under this guest house
+    const roomIds = await Room.find({ guestHouseId: id }).distinct('_id');
     await Room.updateMany(
       { guestHouseId: id },
+      { isActive: false }
+    );
+    await Bed.updateMany(
+      { roomId: { $in: roomIds } },
       { isActive: false }
     );
 

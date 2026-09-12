@@ -1,6 +1,5 @@
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 
 export function BookingSuccessScreen({
   isCustomer,
@@ -8,7 +7,6 @@ export function BookingSuccessScreen({
   onViewBookings
 }) {
   return (
-    <DashboardLayout>
       <div className="max-w-lg mx-auto mt-12 text-center">
         <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-6">
           <Check size={40} className="text-success" />
@@ -33,6 +31,5 @@ export function BookingSuccessScreen({
           </Button>
         </div>
       </div>
-    </DashboardLayout>
   );
 }

@@ -7,8 +7,10 @@ import { formatDateIST } from "@/utils/date";
 import { fetchGuestHouses } from "@/services/guestHouseApi";
 import { fetchAllAvailableRooms } from "@/services/roomApi";
 import { createBooking } from "@/services/bookingApi";
+import { fetchGrades } from "@/services/gradeApi";
 
 import { useAuth } from "@/context/AuthContext";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 
 // Import the new components
 import { BookingSuccessScreen } from "@/components/booking/BookingSuccessScreen";
@@ -18,16 +20,19 @@ import { CustomerBookingForm } from "@/components/booking/CustomerBookingForm";
 import { AdminDateSelection } from "@/components/booking/AdminDateSelection";
 import { AdminRoomSelection } from "@/components/booking/AdminRoomSelection";
 import { AdminBookingForm } from "@/components/booking/AdminBookingForm";
+import Notification from "@/components/ui/Notification";
 
 export default function NewBookingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [notification, setNotification] = useState(null);
 
   const [guestHouses, setGuestHouses] = useState([]);
   const [availableRooms, setAvailableRooms] = useState([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
+  const [grades, setGrades] = useState([]);
 
   const { user, isCustomer } = useAuth();
   const searchParams = useSearchParams();
@@ -111,9 +116,12 @@ export default function NewBookingPage() {
     }
   }, [formData.guestHouseId, formData.roomId, formData.checkIn, formData.checkOut, isCustomer]);
 
-  // Fetch guest houses on mount
+  // Fetch guest houses + grades once for the whole flow (grades are needed by
+  // CustomerRoomSelection for occupancy eligibility — fetching here instead of inside that
+  // component avoids refetching every time the customer revisits room selection).
   useEffect(() => {
     fetchGuestHouses().then(setGuestHouses);
+    fetchGrades().then(setGrades).catch(() => setGrades([]));
   }, []);
 
   // Fetch available rooms when dates change
@@ -171,12 +179,18 @@ export default function NewBookingPage() {
   const selectedGuestHouse = guestHouses.find((gh) => gh._id === formData.guestHouseId);
   const selectedRoom = roomsForGH.find((r) => r._id === formData.roomId);
 
-  // Admin flow: occupancy is derived from whichever room was picked, not chosen independently
+  // Occupancy always tracks whichever room ends up selected. For the normal customer flow
+  // this is a no-op (CustomerRoomSelection already filters rooms to match the chosen
+  // occupancy before a roomId is ever set). It matters for the admin flow (occupancy isn't
+  // chosen independently there) and for direct booking links (?guestHouseId=&roomId=..,
+  // e.g. from the Availability page's "Book" button) which set roomId without ever going
+  // through the occupancy-picker step — without this, occupancyType stayed stuck at its
+  // "SINGLE" default and the booking would fail (or previously crash — see Notification fix).
   useEffect(() => {
-    if (!isCustomer && selectedRoom?.type && selectedRoom.type !== formData.occupancyType) {
+    if (selectedRoom?.type && selectedRoom.type !== formData.occupancyType) {
       setFormData((prev) => ({ ...prev, occupancyType: selectedRoom.type }));
     }
-  }, [isCustomer, selectedRoom, formData.occupancyType]);
+  }, [selectedRoom, formData.occupancyType]);
 
   const getDisabledDates = () => {
     const today = new Date();
@@ -285,130 +299,141 @@ export default function NewBookingPage() {
   const isDatesReady = !!(formData.checkIn && formData.checkOut);
   const isRoomReady = !!(formData.guestHouseId && formData.roomId);
 
-  // Success screen
+  // Everything below is wrapped in a SINGLE <DashboardLayout> at the bottom instead of each
+  // step component wrapping itself — previously every step transition (including "Change
+  // Date" and back) unmounted and remounted the whole layout (Sidebar/Header included),
+  // since React remounts on a component-type change at the return root.
+  let content;
+
   if (submitted) {
-    return (
+    content = (
       <BookingSuccessScreen
         isCustomer={isCustomer}
         onNewBooking={handleNewBooking}
         onViewBookings={() => router.push(isCustomer ? "/my-bookings" : "/bookings")}
       />
     );
-  }
-
-  // Customer flow
-  if (isCustomer) {
-    if (showDateSelection) {
-      return (
-        <CustomerDateSelection
-          range={range}
-          onSelect={handleDateSelection}
-          checkInTime={formData.checkInTime}
-          checkOutTime={formData.checkOutTime}
-          onCheckInTimeChange={(value) => handleChange("checkInTime", value)}
-          onCheckOutTimeChange={(value) => handleChange("checkOutTime", value)}
-          onReset={resetDateSelection}
-          onViewRooms={() => setShowDateSelection(false)}
-          disabledDates={getDisabledDates()}
-          isDatesReady={isDatesReady}
-        />
-      );
-    }
-
-    if (!showDateSelection && isDatesReady && !formData.roomId) {
-      return (
-        <CustomerRoomSelection
-          availableGuestHouses={availableGuestHouses}
-          availableRooms={availableRooms}
-          loadingRooms={loadingRooms}
-          checkIn={formData.checkIn}
-          checkOut={formData.checkOut}
-          onChangeDates={() => setShowDateSelection(true)}
-          onRoomSelect={handleRoomSelectionFromCard}
-          occupancyType={formData.occupancyType}
-          onOccupancyChange={(value) => handleChange("occupancyType", value)}
-        />
-      );
-    }
-
-    return (
-      <CustomerBookingForm
-        selectedGuestHouse={selectedGuestHouse}
-        selectedRoom={selectedRoom}
-        formData={formData}
-        onChange={handleChange}
-        onBack={() => {
-          setFormData((prev) => ({ ...prev, guestHouseId: undefined, roomId: undefined }));
-          setShowDateSelection(false);
-        }}
-        onSubmit={handleSubmit}
-        submitting={submitting}
-        checkIn={formData.checkIn}
-        checkOut={formData.checkOut}
+  } else if (isCustomer && showDateSelection) {
+    content = (
+      <CustomerDateSelection
+        range={range}
+        onSelect={handleDateSelection}
         checkInTime={formData.checkInTime}
         checkOutTime={formData.checkOutTime}
+        onCheckInTimeChange={(value) => handleChange("checkInTime", value)}
+        onCheckOutTimeChange={(value) => handleChange("checkOutTime", value)}
+        onReset={resetDateSelection}
+        onViewRooms={() => setShowDateSelection(false)}
+        disabledDates={getDisabledDates()}
+        isDatesReady={isDatesReady}
       />
+    );
+  } else if (isCustomer && !showDateSelection && isDatesReady && !formData.roomId) {
+    content = (
+      <CustomerRoomSelection
+        availableGuestHouses={availableGuestHouses}
+        availableRooms={availableRooms}
+        loadingRooms={loadingRooms}
+        checkIn={formData.checkIn}
+        checkOut={formData.checkOut}
+        onChangeDates={() => setShowDateSelection(true)}
+        onRoomSelect={handleRoomSelectionFromCard}
+        occupancyType={formData.occupancyType}
+        onOccupancyChange={(value) => handleChange("occupancyType", value)}
+        grades={grades}
+      />
+    );
+  } else if (isCustomer) {
+    content = (
+      <>
+        <CustomerBookingForm
+          selectedGuestHouse={selectedGuestHouse}
+          selectedRoom={selectedRoom}
+          formData={formData}
+          onChange={handleChange}
+          onBack={() => {
+            setFormData((prev) => ({ ...prev, guestHouseId: undefined, roomId: undefined }));
+            setShowDateSelection(false);
+          }}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+          checkIn={formData.checkIn}
+          checkOut={formData.checkOut}
+          checkInTime={formData.checkInTime}
+          checkOutTime={formData.checkOutTime}
+        />
+        {notification && (
+          <Notification
+            type={notification.type}
+            title={notification.title}
+            message={notification.message}
+            onClose={() => setNotification(null)}
+          />
+        )}
+      </>
+    );
+  } else if (showDateSelection) {
+    content = (
+      <AdminDateSelection
+        range={range}
+        onSelect={handleDateSelection}
+        checkInTime={formData.checkInTime}
+        checkOutTime={formData.checkOutTime}
+        onCheckInTimeChange={(value) => handleChange("checkInTime", value)}
+        onCheckOutTimeChange={(value) => handleChange("checkOutTime", value)}
+        onReset={resetDateSelection}
+        onSearchRooms={() => setShowDateSelection(false)}
+        disabledDates={getDisabledDates()}
+        isDatesReady={isDatesReady}
+        checkIn={formData.checkIn}
+        checkOut={formData.checkOut}
+      />
+    );
+  } else if (!showDateSelection && isDatesReady && !formData.roomId) {
+    content = (
+      <AdminRoomSelection
+        availableGuestHouses={availableGuestHouses}
+        availableRooms={availableRooms}
+        loadingRooms={loadingRooms}
+        checkIn={formData.checkIn}
+        checkOut={formData.checkOut}
+        onChangeDates={changeDatesAdmin}
+        onRoomSelect={handleRoomSelectionFromCard}
+      />
+    );
+  } else {
+    content = (
+      <>
+        <AdminBookingForm
+          step={step}
+          setStep={setStep}
+          selectedGuestHouse={selectedGuestHouse}
+          selectedRoom={selectedRoom}
+          formData={formData}
+          onChange={handleChange}
+          onBack={() => {
+            setFormData((prev) => ({ ...prev, guestHouseId: undefined, roomId: undefined }));
+            setStep(1);
+          }}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+          checkIn={formData.checkIn}
+          checkOut={formData.checkOut}
+          checkInTime={formData.checkInTime}
+          checkOutTime={formData.checkOutTime}
+          setShowDateSelection={setShowDateSelection}
+        />
+        {notification && (
+          <Notification
+            type={notification.type}
+            title={notification.title}
+            message={notification.message}
+            onClose={() => setNotification(null)}
+          />
+        )}
+      </>
     );
   }
 
-  // Admin flow
-  if (!isCustomer) {
-    if (showDateSelection) {
-      return (
-        <AdminDateSelection
-          range={range}
-          onSelect={handleDateSelection}
-          checkInTime={formData.checkInTime}
-          checkOutTime={formData.checkOutTime}
-          onCheckInTimeChange={(value) => handleChange("checkInTime", value)}
-          onCheckOutTimeChange={(value) => handleChange("checkOutTime", value)}
-          onReset={resetDateSelection}
-          onSearchRooms={() => setShowDateSelection(false)}
-          disabledDates={getDisabledDates()}
-          isDatesReady={isDatesReady}
-          checkIn={formData.checkIn}
-          checkOut={formData.checkOut}
-        />
-      );
-    }
-
-    if (!showDateSelection && isDatesReady && !formData.roomId) {
-      return (
-        <AdminRoomSelection
-          availableGuestHouses={availableGuestHouses}
-          availableRooms={availableRooms}
-          loadingRooms={loadingRooms}
-          checkIn={formData.checkIn}
-          checkOut={formData.checkOut}
-          onChangeDates={changeDatesAdmin}
-          onRoomSelect={handleRoomSelectionFromCard}
-        />
-      );
-    }
-
-    return (
-      <AdminBookingForm
-        step={step}
-        setStep={setStep}
-        selectedGuestHouse={selectedGuestHouse}
-        selectedRoom={selectedRoom}
-        formData={formData}
-        onChange={handleChange}
-        onBack={() => {
-          setFormData((prev) => ({ ...prev, guestHouseId: undefined, roomId: undefined }));
-          setStep(1);
-        }}
-        onSubmit={handleSubmit}
-        submitting={submitting}
-        checkIn={formData.checkIn}
-        checkOut={formData.checkOut}
-        checkInTime={formData.checkInTime}
-        checkOutTime={formData.checkOutTime}
-        setShowDateSelection={setShowDateSelection}
-      />
-    );
-  }
-
-  // Fallback (should not reach here)
-  return null;
+  return <DashboardLayout>{content}</DashboardLayout>;
 }

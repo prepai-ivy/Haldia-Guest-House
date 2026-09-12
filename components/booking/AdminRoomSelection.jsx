@@ -1,6 +1,5 @@
 import { CalendarDays, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import AdminGuestHouseCard from "@/components/cards/AdminGuestHouseCard";
 
 export function AdminRoomSelection({
@@ -13,13 +12,12 @@ export function AdminRoomSelection({
   onRoomSelect
 }) {
   return (
-    <DashboardLayout>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Available Rooms</h1>
             <p className="text-muted-foreground">
-              {new Date(checkIn).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} - {new Date(checkOut).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+              {new Date(checkIn).toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" })} - {new Date(checkOut).toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" })}
             </p>
           </div>
           <Button
@@ -60,6 +58,5 @@ export function AdminRoomSelection({
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }

@@ -39,7 +39,7 @@ export default function AdminGuestHouseCard({
                 <div>
                   <p className="font-medium text-sm">Room {room.roomNumber}</p>
                   <p className="text-xs text-muted-foreground">
-                    {room.capacity} guests
+                    {room.availableBeds ?? room.totalBeds ?? room.capacity} of {room.totalBeds ?? room.capacity} beds available
                   </p>
                 </div>
                 <div className="text-primary text-xs font-semibold">Select</div>

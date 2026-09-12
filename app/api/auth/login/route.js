@@ -29,6 +29,10 @@ export async function POST(request) {
       return errorResponse('Invalid Password', 401);
     }
 
+    if (!user.isActive) {
+      return errorResponse('This account has been deactivated. Contact an administrator.', 403);
+    }
+
     // Create JWT
     const token = jwt.sign(
       {

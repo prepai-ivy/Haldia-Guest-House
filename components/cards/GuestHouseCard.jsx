@@ -81,7 +81,9 @@ export default function GuestHouseCard({ guestHouse, checkIn, checkOut, availabl
                 <div key={room._id} className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
                   <div>
                     <p className="text-sm font-medium">Room {room.roomNumber}</p>
-                    <p className="text-xs text-muted-foreground">{room.type}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {room.type} · {room.availableBeds ?? room.totalBeds} of {room.totalBeds} beds available
+                    </p>
                   </div>
                   <button
                     onClick={() => router.push(`/bookings/new?guestHouseId=${_id}&roomId=${room._id}&checkIn=${checkIn}&checkOut=${checkOut}&checkInTime=14:00&checkOutTime=11:00`)}

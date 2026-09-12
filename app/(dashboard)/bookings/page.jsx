@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { fetchBookings, updateBookingStatus, editBooking } from "@/services/bookingApi";
 import { fetchRooms } from "@/services/roomApi";
 import { fetchGuestHouses } from "@/services/guestHouseApi";
+import { useRequireRole } from "@/hooks/use-require-role";
 
 const statusTabs = [
   { key: "all", label: "All Bookings" },
@@ -22,6 +23,7 @@ const statusTabs = [
 ];
 
 export default function Bookings() {
+  const { authorized, checking } = useRequireRole(["ADMIN", "SUPER_ADMIN"]);
   const [bookings, setBookings] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [guestHouses, setGuestHouses] = useState([]);
@@ -98,6 +100,10 @@ export default function Bookings() {
     } finally {
       setActionLoading((p) => ({ ...p, [id]: false }));
     }
+  }
+
+  if (checking || !authorized) {
+    return null;
   }
 
   if (loading) {

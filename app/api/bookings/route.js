@@ -2,6 +2,8 @@ import { connectToDatabase, useTransactions } from "@/lib/mongodb";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import Booking from "@/lib/models/Booking.model";
 import Room from "@/lib/models/Room.model";
+import Bed from "@/lib/models/Bed.model";
+import RoomMaintenance from "@/lib/models/RoomMaintainence.modal";
 import User from "@/lib/models/User.model";
 import Grade from "@/lib/models/Grade.model";
 import "@/lib/models/GuestHouse.model"; // register schema for populate
@@ -40,6 +42,9 @@ export async function GET(request) {
 
     /* -------- GUEST HOUSE FILTER -------- */
     if (guestHouseId) {
+      if (!ObjectId.isValid(guestHouseId)) {
+        return errorResponse("Invalid guestHouseId", 400);
+      }
       filter.guestHouseId = new ObjectId(guestHouseId);
     }
 
@@ -51,6 +56,7 @@ export async function GET(request) {
     const bookings = await Booking.find(filter)
       .populate("guestHouseId", "name location category")
       .populate("roomId", "roomNumber type")
+      .populate("bedId", "bedNumber")
       .populate("userId", "name email department")
       .sort({ createdAt: -1 })
       .lean();
@@ -105,7 +111,7 @@ export async function POST(request) {
     const room = await Room.findOne({
       _id: roomId,
       guestHouseId,
-      status: "ACTIVE",
+      isActive: true,
     }).session(session);
 
     if (!room) throw new Error("Room not available");
@@ -114,6 +120,18 @@ export async function POST(request) {
       throw new Error(
         `Selected room is ${room.type} occupancy, not ${occupancyType}`
       );
+    }
+
+    /* -------- MAINTENANCE CHECK (room-level, blocks all beds) -------- */
+    const maintenanceConflict = await RoomMaintenance.findOne({
+      roomId,
+      status: "ACTIVE",
+      startDate: { $lt: checkOut },
+      endDate: { $gt: checkIn },
+    }).session(session);
+
+    if (maintenanceConflict) {
+      throw new Error("Room is under maintenance during the selected dates");
     }
 
     /* -------- GRADE-BASED OCCUPANCY GATE (customer self-requests only) -------- */
@@ -138,19 +156,26 @@ export async function POST(request) {
       }
     }
 
-    /* -------- OVERLAP CHECK -------- */
-    const overlap = await Booking.findOne(
-      {
-        roomId: new ObjectId(roomId),
-        status: { $in: ["BOOKED", "CHECKED_IN"] },
-        checkInDate: { $lt: checkOut },
-        checkOutDate: { $gt: checkIn },
-      },
-      null,
-      { session },
-    );
+    /* -------- BED ASSIGNMENT (auto-assign first free bed in this room) -------- */
+    const roomBeds = await Bed.find({ roomId, isActive: true })
+      .sort({ bedNumber: 1 })
+      .session(session);
 
-    if (overlap) throw new Error("Room already booked");
+    if (roomBeds.length === 0) throw new Error("Room has no beds configured");
+
+    // PENDING counts as occupying a bed too — otherwise two overlapping PENDING requests
+    // could both get auto-assigned the same bed (neither blocks the other), and both could
+    // later be approved into a real double-booking since APPROVE doesn't reassign beds.
+    const occupiedBedIds = await Booking.distinct("bedId", {
+      roomId: new ObjectId(roomId),
+      status: { $in: ["PENDING", "BOOKED", "CHECKED_IN"] },
+      checkInDate: { $lt: checkOut },
+      checkOutDate: { $gt: checkIn },
+    }).session(session);
+    const occupiedBedIdSet = new Set(occupiedBedIds.filter(Boolean).map((id) => id.toString()));
+
+    const assignedBed = roomBeds.find((b) => !occupiedBedIdSet.has(b._id.toString()));
+    if (!assignedBed) throw new Error("Room fully booked for selected dates");
 
     /* -------- USER HANDLING -------- */
     let bookingUser = authUser;
@@ -191,6 +216,7 @@ export async function POST(request) {
         {
           guestHouseId,
           roomId,
+          bedId: assignedBed._id,
           userId: bookingUser._id,
           checkInDate: checkIn,
           checkOutDate: checkOut,
@@ -211,58 +237,69 @@ export async function POST(request) {
     if (useTransactions) await session.commitTransaction();
     session.endSession();
 
-    /* -------- SEND EMAIL -------- */
-    const populatedBooking = await Booking.findById(booking._id)
-      .populate("guestHouseId", "name")
-      .populate("roomId", "roomNumber")
-      .lean();
+    // The booking is now durably committed. Nothing from here on should turn into an
+    // error response for the client — a populate hiccup or email failure here previously
+    // caused the whole request to 409 for a booking that had already been created,
+    // inviting a duplicate-booking retry. sendMail() already fails soft internally;
+    // this guards the populate/lookup work too.
+    let populatedBooking = booking;
+    try {
+      populatedBooking = await Booking.findById(booking._id)
+        .populate("guestHouseId", "name")
+        .populate("roomId", "roomNumber")
+        .populate("bedId", "bedNumber")
+        .lean();
 
-    if (isNewUser) {
-      // Admin created new user → send credentials + booking confirmed
-      await sendMail({
-        email: bookingUser.email,
-        subject: "Guest House Booking & Login Details",
-        html: credentialsAndBookingEmail({
-          name: bookingUser.name,
+      /* -------- SEND EMAIL -------- */
+      if (isNewUser) {
+        // Admin created new user → send credentials + booking confirmed
+        await sendMail({
           email: bookingUser.email,
-          password: generatedPassword,
-          booking: populatedBooking,
-        }),
-      });
-    } else if (authUser.role === "CUSTOMER") {
-      // Customer submitted a request → pending approval, send request received
-      await sendMail({
-        email: bookingUser.email,
-        subject: "Booking Request Received",
-        html: bookingRequestEmail({
-          name: bookingUser.name,
-          booking: populatedBooking,
-        }),
-      });
-    } else {
-      // Admin booked for existing user → send booking confirmed
-      await sendMail({
-        email: bookingUser.email,
-        subject: "Guest House Booking Confirmed",
-        html: bookingOnlyEmail({
-          name: bookingUser.name,
-          booking: populatedBooking,
-        }),
-      });
-    }
+          subject: "Guest House Booking & Login Details",
+          html: credentialsAndBookingEmail({
+            name: bookingUser.name,
+            email: bookingUser.email,
+            password: generatedPassword,
+            booking: populatedBooking,
+          }),
+        });
+      } else if (authUser.role === "CUSTOMER") {
+        // Customer submitted a request → pending approval, send request received
+        await sendMail({
+          email: bookingUser.email,
+          subject: "Booking Request Received",
+          html: bookingRequestEmail({
+            name: bookingUser.name,
+            booking: populatedBooking,
+          }),
+        });
+      } else {
+        // Admin booked for existing user → send booking confirmed
+        await sendMail({
+          email: bookingUser.email,
+          subject: "Guest House Booking Confirmed",
+          html: bookingOnlyEmail({
+            name: bookingUser.name,
+            booking: populatedBooking,
+          }),
+        });
+      }
 
-    /* -------- NOTIFY OPS ADDRESS (every booking, any requestor) -------- */
-    if (process.env.BOOKING_NOTIFY_EMAIL) {
-      await sendMail({
-        email: process.env.BOOKING_NOTIFY_EMAIL,
-        subject: `New Booking Request — ${bookingUser.name}`,
-        html: newBookingNotificationEmail({
-          requesterName: bookingUser.name,
-          requesterEmail: bookingUser.email,
-          requesterRole: authUser.role,
-          booking: populatedBooking,
-        }),
-      });
+      /* -------- NOTIFY OPS ADDRESS (every booking, any requestor) -------- */
+      if (process.env.BOOKING_NOTIFY_EMAIL) {
+        await sendMail({
+          email: process.env.BOOKING_NOTIFY_EMAIL,
+          subject: `New Booking Request — ${bookingUser.name}`,
+          html: newBookingNotificationEmail({
+            requesterName: bookingUser.name,
+            requesterEmail: bookingUser.email,
+            requesterRole: authUser.role,
+            booking: populatedBooking,
+          }),
+        });
+      }
+    } catch (postCommitErr) {
+      console.error("[Bookings POST] post-commit error (booking already created)", postCommitErr);
     }
 
     return successResponse(populatedBooking, 201);
