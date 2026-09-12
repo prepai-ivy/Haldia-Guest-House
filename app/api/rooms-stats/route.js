@@ -11,7 +11,9 @@ import { getISTDayBoundsUTC } from '@/lib/istDate';
 export async function GET(request) {
   try {
     const authUser = getAuthUser(request);
-    if (!authUser) return errorResponse('Unauthorized', 401);
+    if (!authUser || !['ADMIN', 'SUPER_ADMIN'].includes(authUser.role)) {
+      return errorResponse('Forbidden', 403);
+    }
 
     await connectToDatabase();
 

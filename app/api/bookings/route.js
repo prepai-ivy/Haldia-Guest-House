@@ -10,6 +10,7 @@ import "@/lib/models/GuestHouse.model"; // register schema for populate
 import mongoose from "mongoose";
 import { ObjectId } from "mongodb";
 import { getAuthUser } from "@/lib/auth";
+import { claimBedNights } from "@/lib/bedHolds";
 import sendMail from "@/lib/mail";
 import { generatePassword } from "@/lib/password";
 import {
@@ -106,6 +107,10 @@ export async function POST(request) {
     const checkIn = new Date(checkInDate);
     const checkOut = new Date(checkOutDate);
     if (checkIn >= checkOut) throw new Error("Invalid date range");
+
+    if ((paymentMode || "COMPANY_SPONSORED") === "COMPANY_SPONSORED" && !attachmentBlobPath) {
+      throw new Error("Company-sponsored bookings require a supporting document attachment");
+    }
 
     /* -------- ROOM VALIDATION -------- */
     const room = await Room.findOne({
@@ -211,9 +216,21 @@ export async function POST(request) {
     }
 
     /* -------- CREATE BOOKING -------- */
+    // Bed/night holds are claimed against a pre-assigned _id, before the Booking document
+    // itself is written — if useTransactions is off (local dev, or a non-replica-set
+    // MongoDB), there is no automatic rollback, so this order guarantees a losing request
+    // never leaves behind a Booking document at all, rather than one with no lock behind it.
+    const bookingId = new mongoose.Types.ObjectId();
+
+    // The real guard against two concurrent requests both landing on the same bed: this
+    // throws if another request already claimed any of these bed/nights first.
+    // See lib/bedHolds.js.
+    await claimBedNights(assignedBed._id, checkIn, checkOut, bookingId, session);
+
     const [booking] = await Booking.create(
       [
         {
+          _id: bookingId,
           guestHouseId,
           roomId,
           bedId: assignedBed._id,

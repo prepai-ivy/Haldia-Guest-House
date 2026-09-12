@@ -105,6 +105,9 @@ export default function BookingCard({
   // Rooms for currently selected guest house in edit mode
   const bookingGhId = booking.guestHouseId?._id?.toString() || booking.guestHouseId?.toString();
   const selectedGuestHouseId = editData.guestHouseId || bookingGhId;
+  // Same-guest-house rooms only. Picking a room of a different type than originally
+  // requested is allowed (e.g. no matching room free) — the existing "Overridden" badge
+  // above already flags a requestedOccupancy/room-type mismatch wherever it comes from.
   const availableRoomsForGuestHouse = rooms.filter(
     (r) => r.guestHouseId?.toString() === selectedGuestHouseId
   );

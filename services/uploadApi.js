@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from '@/lib/apiClient';
+import { apiClient, ApiError, refreshAccessToken } from '@/lib/apiClient';
 
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 export const ALLOWED_UPLOAD_TYPES = [
@@ -21,19 +21,28 @@ export async function uploadFile(file, folder) {
     throw new ApiError(400, 'Only image or PDF files are allowed');
   }
 
-  const token = typeof window !== 'undefined'
-    ? localStorage.getItem('lalbaba_token')
-    : null;
-
   const formData = new FormData();
   formData.append('file', file);
   formData.append('folder', folder);
 
-  const res = await fetch('/api/upload', {
+  const doUpload = (token) => fetch('/api/upload', {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
+
+  const token = typeof window !== 'undefined'
+    ? localStorage.getItem('lalbaba_token')
+    : null;
+
+  let res = await doUpload(token);
+
+  if (res.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      res = await doUpload(newToken);
+    }
+  }
 
   if (!res.ok) {
     let message = 'Upload failed';

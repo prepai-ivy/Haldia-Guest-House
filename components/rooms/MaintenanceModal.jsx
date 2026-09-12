@@ -192,48 +192,67 @@ export default function MaintenanceModal({ room, guestHouseId, onClose, onChange
               {conflicts.length} booking(s) overlap these dates. Reassign or cancel each before scheduling maintenance.
             </p>
             <div className="space-y-3">
-              {conflicts.map((c) => (
-                <div key={c._id} className="border rounded-lg p-3 space-y-2">
-                  <div className="text-sm">
-                    <span className="font-medium">{c.userId?.name || "Guest"}</span>
-                    <span className="text-muted-foreground"> · {formatDate(c.checkInDate)} – {formatDate(c.checkOutDate)} · {c.status}</span>
+              {conflicts.map((c) => {
+                const chosenRoom = otherRooms.find((r) => r._id === reassignChoice[c._id]);
+                const occupancyWillChange =
+                  chosenRoom && c.requestedOccupancy && chosenRoom.type !== c.requestedOccupancy;
+
+                return (
+                  <div key={c._id} className="border rounded-lg p-3 space-y-2">
+                    <div className="text-sm">
+                      <span className="font-medium">{c.userId?.name || "Guest"}</span>
+                      <span className="text-muted-foreground"> · {formatDate(c.checkInDate)} – {formatDate(c.checkOutDate)} · {c.status}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {otherRooms.length > 0 ? (
+                        <>
+                          <Select
+                            value={reassignChoice[c._id] || ""}
+                            onValueChange={(v) => setReassignChoice((p) => ({ ...p, [c._id]: v }))}
+                          >
+                            <SelectTrigger className="h-8 text-xs flex-1">
+                              <SelectValue placeholder="Reassign to room…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {otherRooms.map((r) => (
+                                <SelectItem key={r._id} value={r._id}>
+                                  Room {r.roomNumber} ({r.type})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!reassignChoice[c._id] || resolving[c._id]}
+                            onClick={() => handleReassign(c._id)}
+                          >
+                            Reassign
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground flex-1">
+                          No other room in this guest house to reassign to.
+                        </p>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-destructive text-destructive hover:bg-destructive"
+                        disabled={resolving[c._id]}
+                        onClick={() => handleCancelBooking(c._id, c.status)}
+                      >
+                        {c.status === "PENDING" ? "Reject" : "Cancel"}
+                      </Button>
+                    </div>
+                    {occupancyWillChange && (
+                      <p className="text-xs text-warning">
+                        ⚠ This will change the guest&apos;s occupancy from {c.requestedOccupancy} to {chosenRoom.type}.
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={reassignChoice[c._id] || ""}
-                      onValueChange={(v) => setReassignChoice((p) => ({ ...p, [c._id]: v }))}
-                    >
-                      <SelectTrigger className="h-8 text-xs flex-1">
-                        <SelectValue placeholder="Reassign to room…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {otherRooms.map((r) => (
-                          <SelectItem key={r._id} value={r._id}>
-                            Room {r.roomNumber} ({r.type})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!reassignChoice[c._id] || resolving[c._id]}
-                      onClick={() => handleReassign(c._id)}
-                    >
-                      Reassign
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-destructive text-destructive hover:bg-destructive"
-                      disabled={resolving[c._id]}
-                      onClick={() => handleCancelBooking(c._id, c.status)}
-                    >
-                      {c.status === "PENDING" ? "Reject" : "Cancel"}
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

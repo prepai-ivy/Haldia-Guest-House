@@ -7,8 +7,9 @@ export default function AdminGuestHouseCard({
   availableRooms,
   onRoomSelect,
 }) {
-  const available = guestHouse.totalRooms - guestHouse.bookedRooms;
-  const availableCount = checkIn && checkOut ? availableRooms.length : available;
+  // guestHouse comes from /api/guest-house-stats, which already returns a computed
+  // `available` count — there is no `bookedRooms` field on that response.
+  const availableCount = checkIn && checkOut ? availableRooms.length : guestHouse.available;
 
   return (
     <div className="border rounded-lg p-4 hover:shadow-md transition-shadow">

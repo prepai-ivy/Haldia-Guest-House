@@ -77,9 +77,10 @@ export default function RoomInventory() {
       setRooms((prev) => prev.filter((r) => r._id !== roomToDelete._id));
       setConfirmOpen(false);
       setRoomToDelete(null);
+      refreshStats();
     } catch (err) {
       console.error("Failed to delete room", err);
-      alert("Failed to delete room");
+      alert(err?.message || "Failed to delete room");
     } finally {
       setDeleting(false);
     }

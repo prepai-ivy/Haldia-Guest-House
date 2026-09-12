@@ -28,6 +28,7 @@ import {
 
 import { fetchUsers, updateUser } from "@/services/userApi";
 import { useRouter } from "next/navigation";
+import { useRequireRole } from "@/hooks/use-require-role";
 
 const roleConfig = {
   SUPER_ADMIN: {
@@ -48,6 +49,7 @@ const roleConfig = {
 };
 
 export default function UserManagement() {
+  const { authorized, checking } = useRequireRole(["SUPER_ADMIN"]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -73,6 +75,10 @@ export default function UserManagement() {
 
     loadUsers();
   }, []);
+
+  if (checking || !authorized) {
+    return null;
+  }
 
   if (loading) {
     return (

@@ -162,6 +162,19 @@ export async function DELETE(request, { params }) {
       return errorResponse('Invalid room id', 400);
     }
 
+    // Mirrors the capacity-reduction guard on PATCH — without this, a room (and the
+    // bookings pointing at it) could vanish from every isActive:true query mid-stay.
+    const activeBooking = await Booking.findOne({
+      roomId: id,
+      status: { $in: ['PENDING', 'BOOKED', 'CHECKED_IN'] },
+    });
+    if (activeBooking) {
+      return errorResponse(
+        'Cannot delete a room with a pending, booked, or checked-in reservation',
+        409
+      );
+    }
+
     const room = await Room.findByIdAndUpdate(
       id,
       { isActive: false },

@@ -18,10 +18,12 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { createUser } from "@/services/userApi";
 import { fetchGrades } from "@/services/gradeApi";
 import { useAuth } from "@/context/AuthContext";
+import { useRequireRole } from "@/hooks/use-require-role";
 
 export default function AddUser() {
   const router = useRouter();
   const { isSuperAdmin } = useAuth();
+  const { authorized, checking } = useRequireRole(["SUPER_ADMIN"]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [grades, setGrades] = useState([]);
@@ -58,6 +60,10 @@ export default function AddUser() {
       setLoading(false);
     }
   };
+
+  if (checking || !authorized) {
+    return null;
+  }
 
   return (
     <DashboardLayout>

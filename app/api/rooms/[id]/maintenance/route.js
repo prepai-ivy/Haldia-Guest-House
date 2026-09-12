@@ -6,6 +6,7 @@ import RoomMaintenance from "@/lib/models/RoomMaintainence.modal";
 import Booking from "@/lib/models/Booking.model";
 import "@/lib/models/GuestHouse.model"; // register schema for populate
 import "@/lib/models/Bed.model";        // register schema for populate
+import "@/lib/models/User.model";       // register schema for populate
 import mongoose from "mongoose";
 
 /* -------------------- GET: list maintenance windows for a room -------------------- */
@@ -61,6 +62,25 @@ export async function POST(request, { params }) {
     const end = new Date(endDate);
     if (isNaN(start) || isNaN(end) || start >= end) {
       return errorResponse("Invalid date range", 400);
+    }
+
+    const now = new Date();
+    if (end <= now) {
+      return errorResponse("Maintenance window must not be entirely in the past", 400);
+    }
+
+    /* -------- OVERLAP WITH AN EXISTING WINDOW -------- */
+    const existingWindow = await RoomMaintenance.findOne({
+      roomId: id,
+      status: "ACTIVE",
+      startDate: { $lt: end },
+      endDate: { $gt: start },
+    });
+    if (existingWindow) {
+      return errorResponse(
+        "This room already has a scheduled maintenance window overlapping those dates",
+        409,
+      );
     }
 
     /* -------- CONFLICT CHECK --------

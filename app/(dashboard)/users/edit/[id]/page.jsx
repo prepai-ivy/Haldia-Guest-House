@@ -18,12 +18,14 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { fetchUserById, updateUser } from "@/services/userApi";
 import { fetchGrades } from "@/services/gradeApi";
 import { useAuth } from "@/context/AuthContext";
+import { useRequireRole } from "@/hooks/use-require-role";
 
 export default function EditUser() {
   const params = useParams();
   const id = params?.id;
   const router = useRouter();
   const { isSuperAdmin } = useAuth();
+  const { authorized, checking } = useRequireRole(["SUPER_ADMIN"]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -79,6 +81,10 @@ export default function EditUser() {
       setSaving(false);
     }
   };
+
+  if (checking || !authorized) {
+    return null;
+  }
 
   if (loading) {
     return (

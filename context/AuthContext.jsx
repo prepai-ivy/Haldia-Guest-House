@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient, ApiError } from '@/lib/apiClient';
+import { apiClient, ApiError, refreshAccessToken } from '@/lib/apiClient';
 import { isTokenExpired } from '@/lib/tokenUtils';
 
 const AuthContext = createContext(null);
@@ -12,37 +12,60 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const clearSession = () => {
+    localStorage.removeItem('lalbaba_user');
+    localStorage.removeItem('lalbaba_token');
+    localStorage.removeItem('lalbaba_refresh_token');
+  };
+
   // Handle automatic logout on token expiration
   const handleTokenExpired = () => {
     setUser(null);
-    localStorage.removeItem('lalbaba_user');
-    localStorage.removeItem('lalbaba_token');
+    clearSession();
     router.push('/login');
   };
 
-  // Restore session on reload
+  // Restore session on reload — if the access token expired but a refresh token is still
+  // around, try a silent refresh (this also picks up any role/isActive change made while
+  // the tab was closed) before giving up on the session.
   useEffect(() => {
-    const savedUser = localStorage.getItem('lalbaba_user');
-    const token = localStorage.getItem('lalbaba_token');
+    async function restore() {
+      const savedUser = localStorage.getItem('lalbaba_user');
+      const token = localStorage.getItem('lalbaba_token');
+      const refreshToken = localStorage.getItem('lalbaba_refresh_token');
 
-    if (savedUser && token && savedUser !== 'undefined') {
+      if (!savedUser || savedUser === 'undefined') {
+        setLoading(false);
+        return;
+      }
+
       try {
-        // Check if token is expired
-        if (isTokenExpired(token)) {
-          localStorage.removeItem('lalbaba_user');
-          localStorage.removeItem('lalbaba_token');
+        if (token && !isTokenExpired(token)) {
+          setUser(JSON.parse(savedUser));
           setLoading(false);
           return;
         }
-        setUser(JSON.parse(savedUser));
+
+        if (refreshToken) {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            const updatedUser = localStorage.getItem('lalbaba_user');
+            setUser(JSON.parse(updatedUser));
+            setLoading(false);
+            return;
+          }
+        }
+
+        clearSession();
       } catch {
         // corrupted storage → clean it
-        localStorage.removeItem('lalbaba_user');
-        localStorage.removeItem('lalbaba_token');
+        clearSession();
       }
+
+      setLoading(false);
     }
 
-    setLoading(false);
+    restore();
   }, []);
 
   // Listen for token expiration events
@@ -50,6 +73,16 @@ export function AuthProvider({ children }) {
     window.addEventListener('token-expired', handleTokenExpired);
     return () => window.removeEventListener('token-expired', handleTokenExpired);
   }, [router]);
+
+  // A silent refresh (triggered by apiClient after a 401) may return an updated user —
+  // e.g. a role change made by an admin while this session was open.
+  useEffect(() => {
+    function onRefreshed(e) {
+      setUser(e.detail);
+    }
+    window.addEventListener('user-refreshed', onRefreshed);
+    return () => window.removeEventListener('user-refreshed', onRefreshed);
+  }, []);
 
 
   const login = async (email, password) => {
@@ -63,11 +96,12 @@ export function AuthProvider({ children }) {
         return { success: false, error: 'Invalid login response' };
       }
 
-      const { user, token } = res.data;
+      const { user, token, refreshToken } = res.data;
 
       setUser(user);
       localStorage.setItem('lalbaba_user', JSON.stringify(user));
       localStorage.setItem('lalbaba_token', token);
+      if (refreshToken) localStorage.setItem('lalbaba_refresh_token', refreshToken);
 
       return { success: true, user };
     } catch (err) {
@@ -80,11 +114,16 @@ export function AuthProvider({ children }) {
 
 
   const logout = () => {
+    const refreshToken = localStorage.getItem('lalbaba_refresh_token');
     setUser(null);
-    localStorage.removeItem('lalbaba_user');
-    localStorage.removeItem('lalbaba_token');
+    clearSession();
     window.dispatchEvent(new CustomEvent('user-logout'));
     router.push('/login');
+
+    if (refreshToken) {
+      // Best-effort revoke — don't block navigation on it.
+      apiClient('/auth/logout', { method: 'POST', body: { refreshToken } }).catch(() => {});
+    }
   };
 
   const value = {

@@ -61,7 +61,10 @@ export async function GET(request) {
           {
             $match: {
               roomId: { $in: roomIds },
-              status: { $in: ['BOOKED', 'CHECKED_IN'] },
+              // PENDING counts as occupying a bed too — otherwise this list would show a
+              // room as available while POST /api/bookings (which does include PENDING)
+              // rejects it as fully booked.
+              status: { $in: ['PENDING', 'BOOKED', 'CHECKED_IN'] },
               checkInDate: { $lt: end },
               checkOutDate: { $gt: start },
             },
@@ -137,6 +140,10 @@ export async function POST(request) {
 
     if (!['SINGLE', 'DOUBLE'].includes(type)) {
       return errorResponse('Invalid room type', 400);
+    }
+
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 20) {
+      return errorResponse('capacity must be a positive integer (max 20)', 400);
     }
 
     /* -------- Validate guest house exists -------- */
