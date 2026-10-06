@@ -144,14 +144,14 @@ export function CustomerRoomSelection({
                           onClick={() => onRoomSelect(gh._id, room._id)}
                           className="w-full text-left p-2 rounded hover:bg-primary/10 border hover:border-primary transition-colors"
                         >
-                          <div className="flex justify-between items-center">
-                            <div>
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="min-w-0">
                               <p className="font-medium text-sm">Room {room.roomNumber}</p>
                               <p className="text-xs text-muted-foreground">
                                 {room.availableBeds ?? room.totalBeds ?? room.capacity} of {room.totalBeds ?? room.capacity} beds available
                               </p>
                             </div>
-                            <div className="text-primary text-xs font-semibold">Select</div>
+                            <div className="text-primary text-xs font-semibold shrink-0">Select</div>
                           </div>
                         </button>
                       ))

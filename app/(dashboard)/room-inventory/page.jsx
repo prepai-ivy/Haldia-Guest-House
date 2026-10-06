@@ -239,16 +239,16 @@ export default function RoomInventory() {
                   key={room._id}
                   className="bg-card border border-border rounded-xl p-5"
                 >
-                  <div className="flex justify-between mb-3">
-                    <div>
-                      <h4 className="font-semibold">Room {room.roomNumber}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {room.type}
-                      </p>
+                  <div className="mb-3">
+                    <div className="flex justify-end mb-2">
+                      <Badge className={statusColors[room.todayStatus]}>
+                        {room.todayStatus.charAt(0) + room.todayStatus.slice(1).toLowerCase()}
+                      </Badge>
                     </div>
-                    <Badge className={statusColors[room.todayStatus]}>
-                      {room.todayStatus.charAt(0) + room.todayStatus.slice(1).toLowerCase()}
-                    </Badge>
+                    <h4 className="font-semibold">Room {room.roomNumber}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {room.type}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2 text-sm mb-3">

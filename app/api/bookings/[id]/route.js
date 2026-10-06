@@ -157,8 +157,11 @@ export async function PATCH(request, { params }) {
       if (paymentMode !== undefined) booking.paymentMode = paymentMode;
       if (guestHouseId) booking.guestHouseId = new mongoose.Types.ObjectId(guestHouseId);
 
+      // Stored on the booking itself, not the account — the same account can be reused to
+      // book for different people over time, and renaming the account here would relabel
+      // every other booking tied to it too (past and future). See Booking.model.js.
       if (guestName) {
-        await User.findByIdAndUpdate(booking.userId, { name: guestName }, { session });
+        booking.guestName = guestName;
       }
 
       await booking.save({ session, validateModifiedOnly: true });
@@ -188,7 +191,7 @@ export async function PATCH(request, { params }) {
               email: bookingUser.email,
               subject: "Your Booking Has Been Reassigned",
               html: maintenanceImpactEmail({
-                name: bookingUser.name,
+                name: updated.guestName || bookingUser.name,
                 action: "REASSIGNED",
                 booking: updated,
                 maintenanceReason,
@@ -299,7 +302,7 @@ export async function PATCH(request, { params }) {
             email: bookingUser.email,
             subject: "Guest House Booking Confirmed",
             html: bookingOnlyEmail({
-              name: bookingUser.name,
+              name: updated.guestName || bookingUser.name,
               booking: updated,
             }),
           });
@@ -324,7 +327,7 @@ export async function PATCH(request, { params }) {
               ? "Your Booking Request Has Been Rejected"
               : "Your Booking Has Been Cancelled",
             html: maintenanceImpactEmail({
-              name: bookingUser.name,
+              name: updated.guestName || bookingUser.name,
               action: impactAction,
               booking: updated,
               maintenanceReason,

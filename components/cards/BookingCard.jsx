@@ -181,7 +181,7 @@ export default function BookingCard({
     const guestHouseId = booking.guestHouseId?._id || booking.guestHouseId;
 
     setEditData({
-      guestName: booking.userId?.name || "",
+      guestName: booking.guestName || booking.userId?.name || "",
       department: booking.department || "",
       purpose: booking.purpose || "",
       paymentMode: booking.paymentMode || "COMPANY_SPONSORED",
@@ -281,7 +281,7 @@ export default function BookingCard({
             <User size={20} className="text-muted-foreground" />
           </div>
           <h4 className="font-semibold text-foreground truncate">
-            {booking.userId?.guestName || booking.userId?.name}
+            {booking.guestName || booking.userId?.name}
           </h4>
         </div>
 

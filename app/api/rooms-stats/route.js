@@ -67,7 +67,7 @@ export async function GET(request) {
 
     const occupiedBedsPerRoom = {}; // roomId -> Set(bedId)
     todayBookings.forEach((b) => {
-      if (!b.bedId) return; // legacy booking predating bed-level booking — not attributable to a bed
+      if (!b.bedId || !b.roomId) return; // legacy/malformed booking — not attributable to a bed
       const rid = b.roomId.toString();
       if (!occupiedBedsPerRoom[rid]) occupiedBedsPerRoom[rid] = new Set();
       occupiedBedsPerRoom[rid].add(b.bedId.toString());

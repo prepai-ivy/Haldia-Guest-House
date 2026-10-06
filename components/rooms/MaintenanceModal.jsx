@@ -200,7 +200,7 @@ export default function MaintenanceModal({ room, guestHouseId, onClose, onChange
                 return (
                   <div key={c._id} className="border rounded-lg p-3 space-y-2">
                     <div className="text-sm">
-                      <span className="font-medium">{c.userId?.name || "Guest"}</span>
+                      <span className="font-medium">{c.guestName || c.userId?.name || "Guest"}</span>
                       <span className="text-muted-foreground"> · {formatDate(c.checkInDate)} – {formatDate(c.checkOutDate)} · {c.status}</span>
                     </div>
                     <div className="flex items-center gap-2">

@@ -64,7 +64,7 @@ export async function GET(request) {
 
     const occupiedBedsPerRoom = {}; // roomId -> Set(bedId)
     activeBookings.forEach((b) => {
-      if (!b.bedId) return; // legacy booking predating bed-level booking — not attributable to a bed
+      if (!b.bedId || !b.roomId) return; // legacy/malformed booking — not attributable to a bed
       const rid = b.roomId.toString();
       if (!occupiedBedsPerRoom[rid]) occupiedBedsPerRoom[rid] = new Set();
       occupiedBedsPerRoom[rid].add(b.bedId.toString());
@@ -72,7 +72,7 @@ export async function GET(request) {
 
     /* ---------------- FINAL RESPONSE ---------------- */
     const result = guestHouses.map((gh) => {
-      const ghRooms = rooms.filter((r) => r.guestHouseId.toString() === gh._id.toString());
+      const ghRooms = rooms.filter((r) => r.guestHouseId && r.guestHouseId.toString() === gh._id.toString());
       const totalRooms = ghRooms.length;
 
       let underMaintenance = 0;

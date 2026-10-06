@@ -213,7 +213,15 @@ export async function POST(request) {
         bookingUser = bookingUser[0];
         isNewUser = true;
       }
+      // bookingUser is NOT renamed when an existing account is reused — the same email
+      // can be used to book for different people over time, and overwriting the account's
+      // name here would relabel every other booking tied to it too. See guestName below.
     }
+
+    // The name this specific booking is for — stored on the booking itself (see
+    // Booking.model.js), not inferred from the account, since the account may be shared
+    // or reused across different guests.
+    const effectiveGuestName = authUser.role === "CUSTOMER" ? authUser.name : guestName;
 
     /* -------- CREATE BOOKING -------- */
     // Bed/night holds are claimed against a pre-assigned _id, before the Booking document
@@ -235,6 +243,7 @@ export async function POST(request) {
           roomId,
           bedId: assignedBed._id,
           userId: bookingUser._id,
+          guestName: effectiveGuestName,
           checkInDate: checkIn,
           checkOutDate: checkOut,
           requestedOccupancy: occupancyType,
@@ -274,7 +283,7 @@ export async function POST(request) {
           email: bookingUser.email,
           subject: "Guest House Booking & Login Details",
           html: credentialsAndBookingEmail({
-            name: bookingUser.name,
+            name: effectiveGuestName,
             email: bookingUser.email,
             password: generatedPassword,
             booking: populatedBooking,
@@ -286,7 +295,7 @@ export async function POST(request) {
           email: bookingUser.email,
           subject: "Booking Request Received",
           html: bookingRequestEmail({
-            name: bookingUser.name,
+            name: effectiveGuestName,
             booking: populatedBooking,
           }),
         });
@@ -296,7 +305,7 @@ export async function POST(request) {
           email: bookingUser.email,
           subject: "Guest House Booking Confirmed",
           html: bookingOnlyEmail({
-            name: bookingUser.name,
+            name: effectiveGuestName,
             booking: populatedBooking,
           }),
         });
@@ -306,9 +315,9 @@ export async function POST(request) {
       if (process.env.BOOKING_NOTIFY_EMAIL) {
         await sendMail({
           email: process.env.BOOKING_NOTIFY_EMAIL,
-          subject: `New Booking Request — ${bookingUser.name}`,
+          subject: `New Booking Request — ${effectiveGuestName}`,
           html: newBookingNotificationEmail({
-            requesterName: bookingUser.name,
+            requesterName: effectiveGuestName,
             requesterEmail: bookingUser.email,
             requesterRole: authUser.role,
             booking: populatedBooking,

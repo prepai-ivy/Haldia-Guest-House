@@ -65,7 +65,7 @@ export default function Bookings() {
 
       const q = searchQuery.toLowerCase();
       const matchesSearch =
-        (b.userId?.name || "").toLowerCase().includes(q) ||
+        (b.guestName || b.userId?.name || "").toLowerCase().includes(q) ||
         (b.department || "").toLowerCase().includes(q) ||
         (b.purpose || "").toLowerCase().includes(q);
 
